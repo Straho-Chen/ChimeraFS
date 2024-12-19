@@ -1,0 +1,12 @@
+*.o
+*.ko
+*.a
+*.a.cmd
+*.mod.c
+*.o.cmd
+*.ko.cmd
+Module.symvers
+modules.order
+pattern
+.vscode
+.tmp_versions

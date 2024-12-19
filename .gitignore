@@ -1,0 +1,13 @@
+linux/
+*.o
+*.cmd
+*.ko
+*.mod
+*.mod.c
+*.o.*
+*.tar
+*.s
+*.so
+Module.symvers
+modules.order
+*.log

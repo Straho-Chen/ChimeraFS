@@ -1,0 +1,23 @@
+config SLFS
+    tristate "Single Level File System support"
+    select DEV_DAX_PMEM
+    help
+     This is a file system for non-volatile memory. It use a single level design and use a little memory.
+
+config SLFS_XIP
+    bool "Execute-in-place in SLFS"
+    depends on SLFS
+    help
+     Say Y here to enable XIP feature of SLFS.
+
+config SLFS_DEBUG
+    bool "SLFS debug log support"
+    depends on SLFS
+    help
+     Enables run-time debug log support for the SLFS filesystem.
+    
+config SLFS_TRACE
+    bool "SLFS trace support"
+    depends on SLFS
+    help
+     Enables run-time trace log support for the SLFS filesystem.
