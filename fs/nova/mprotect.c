@@ -19,13 +19,10 @@
  */
 
 #include <linux/module.h>
-#include <linux/fs.h>
-#include <linux/mm.h>
-#include <linux/io.h>
-#include <asm/tlbflush.h>
-#include <asm/tlb.h>
 #include "nova.h"
 #include "inode.h"
+
+#include <asm/tlb.h>
 
 int nova_get_vma_overlap_range(struct super_block *sb,
 			       struct nova_inode_info_header *sih,
