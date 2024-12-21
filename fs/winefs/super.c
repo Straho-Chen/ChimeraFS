@@ -37,11 +37,11 @@
 #include "inode.h"
 #include "xattr.h"
 
-int measure_timing_winefs = 0;
+int measure_timing = 0;
 int winefs_support_clwb = 0;
 int winefs_support_pcommit = 0;
 
-module_param(measure_timing_winefs, int, S_IRUGO);
+module_param(measure_timing, int, S_IRUGO);
 MODULE_PARM_DESC(measure_timing, "Timing measurement");
 
 static struct super_operations winefs_sops;

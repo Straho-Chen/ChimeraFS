@@ -45,12 +45,12 @@
 #include "odinfs_config.h"
 #include "ring.h"
 
-int measure_timing_odinfs = 1;
+int measure_timing = 1;
 int support_clwb_odinfs = 0;
 int support_pcommit_odinfs = 0;
 
-module_param(measure_timing_odinfs, int, S_IRUGO);
-MODULE_PARM_DESC(measure_timing_odinfs, "Timing measurement");
+module_param(measure_timing, int, S_IRUGO);
+MODULE_PARM_DESC(measure_timing, "Timing measurement");
 
 static struct super_operations odinfs_sops;
 static const struct export_operations odinfs_export_ops;

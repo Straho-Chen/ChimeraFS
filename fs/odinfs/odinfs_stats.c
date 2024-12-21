@@ -86,7 +86,7 @@ void odinfs_print_timing_stats(void)
 
 	printk("======== ODINFS kernel timing stats ========\n");
 	for (i = 0; i < TIMING_NUM; i++) {
-		if (measure_timing_odinfs || Timingstats_odinfs[i]) {
+		if (measure_timing || Timingstats_odinfs[i]) {
 			printk("%s: count %lu, timing %lu, average %lu\n",
 			       Timingstring_odinfs[i], Countstats_odinfs[i],
 			       Timingstats_odinfs[i],

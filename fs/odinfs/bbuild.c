@@ -484,7 +484,7 @@ int odinfs_setup_blocknode_map(struct super_block *sb)
 	timing_t start, end;
 
 	/* Always check recovery time */
-	if (measure_timing_odinfs == 0)
+	if (measure_timing == 0)
 		ktime_get_ts64(&start);
 
 	ODINFS_START_TIMING(recovery_t, start);
@@ -538,7 +538,7 @@ skip:
 
 end:
 	ODINFS_END_TIMING(recovery_t, start);
-	if (measure_timing_odinfs == 0) {
+	if (measure_timing == 0) {
 		ktime_get_ts64(&end);
 		Timingstats_odinfs[recovery_t] +=
 			(end.tv_sec - start.tv_sec) * 1000000000 +

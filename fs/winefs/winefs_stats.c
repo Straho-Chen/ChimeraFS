@@ -1,8 +1,7 @@
 #include "winefs.h"
 #include "inode.h"
 
-const char *winefs_Timingstring[TIMING_NUM] =
-{
+const char *winefs_Timingstring[TIMING_NUM] = {
 	"create",
 	"new_inode",
 	"add_nondir",
@@ -60,7 +59,6 @@ void winefs_print_available_hugepages(struct super_block *sb)
 	unsigned long num_free_blocks = 0;
 	struct free_list *free_list;
 
-
 	printk("======== WINEFS Available Free Hugepages =======\n");
 	for (i = 0; i < sbi->cpus; i++) {
 		free_list = winefs_get_free_list(sb, i);
@@ -80,17 +78,17 @@ void winefs_print_timing_stats(void)
 
 	printk("======== WINEFS kernel timing stats ========\n");
 	for (i = 0; i < TIMING_NUM; i++) {
-		if (measure_timing_winefs || winefs_Timingstats[i]) {
+		if (measure_timing || winefs_Timingstats[i]) {
 			printk("%s: count %llu, timing %llu, average %llu\n",
-				winefs_Timingstring[i],
-				winefs_Countstats[i],
-				winefs_Timingstats[i],
-				winefs_Countstats[i] ?
-				winefs_Timingstats[i] / winefs_Countstats[i] : 0);
+			       winefs_Timingstring[i], winefs_Countstats[i],
+			       winefs_Timingstats[i],
+			       winefs_Countstats[i] ?
+				       winefs_Timingstats[i] /
+					       winefs_Countstats[i] :
+				       0);
 		} else {
-			printk("%s: count %llu\n",
-				winefs_Timingstring[i],
-				winefs_Countstats[i]);
+			printk("%s: count %llu\n", winefs_Timingstring[i],
+			       winefs_Countstats[i]);
 		}
 	}
 

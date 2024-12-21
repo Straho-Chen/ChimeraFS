@@ -87,7 +87,7 @@ DECLARE_PER_CPU(unsigned long[TIMING_NUM], Timingstats_percpu_odinfs);
 extern unsigned long Countstats_odinfs[TIMING_NUM];
 DECLARE_PER_CPU(unsigned long[TIMING_NUM], Countstats_percpu_odinfs);
 
-extern int measure_timing_odinfs;
+extern int measure_timing;
 
 typedef unsigned long timing_t;
 
@@ -102,7 +102,7 @@ typedef unsigned long timing_t;
 
 #define ODINFS_START_TIMING(name, start)               \
 	do {                                           \
-		if (measure_timing_odinfs) {           \
+		if (measure_timing) {                  \
 			barrier();                     \
 			start = odinfs_timing_start(); \
 			barrier();                     \
@@ -111,7 +111,7 @@ typedef unsigned long timing_t;
 
 #define ODINFS_END_TIMING(name, start)                                  \
 	do {                                                            \
-		if (measure_timing_odinfs) {                            \
+		if (measure_timing) {                                   \
 			timing_t end;                                   \
 			barrier();                                      \
 			end = odinfs_timing_end();                      \

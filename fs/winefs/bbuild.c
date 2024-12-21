@@ -1508,7 +1508,7 @@ int winefs_recovery(struct super_block *sb, size_t size, size_t size_2)
 		sbi->blocksize = blocksize;
 
 	/* Always check recovery time */
-	if (measure_timing_winefs == 0)
+	if (measure_timing == 0)
 		ktime_get_ts64(&start);
 
 	/* initialize free list info */
@@ -1535,7 +1535,7 @@ int winefs_recovery(struct super_block *sb, size_t size, size_t size_2)
 	}
 
 out:
-	if (measure_timing_winefs == 0) {
+	if (measure_timing == 0) {
 		ktime_get_ts64(&end);
 		winefs_Timingstats[recovery_t] +=
 			(end.tv_sec - start.tv_sec) * 1000000000 +
