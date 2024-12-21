@@ -3,10 +3,10 @@
 del_thrds=$1
 
 mount_script_dir=$(dirname "$(readlink -f "$BASH_SOURCE[0]")")
-$mount_script_dir/check-pm-fsdax.sh
+$mount_script_dir/check-pm-fsdax.sh 0
+$mount_script_dir/check-pm-fsdax.sh 1
 
 #Two sockets
-rm -rf /dev/pmem_ar0
 sudo parradm create /dev/pmem0 /dev/pmem1
 
 #Four sockets

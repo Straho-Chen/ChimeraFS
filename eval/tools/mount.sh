@@ -9,7 +9,7 @@ ABS_PATH=$(where_is_script "$0")
 
 # mount script path
 
-MOUNT_SCRIPT_PATH=$ABS_PATH/mount-script
+MOUNT_SCRIPT_PATH=$ABS_PATH/mount-scripts
 
 # free memory at first
 echo "Drop caches..."
@@ -25,7 +25,7 @@ fs=$1
 del_thrds=$2
 
 # if fs is odinfs, we need to specify the number of deletion threads
-if [ "$fs" == odinfs* ]; then
+if [[ "$fs" == odinfs* ]]; then
     # check del_thrds not null
     if [ -z "$del_thrds" ]; then
         echo "Please specify the number of deletion threads for odinfs"

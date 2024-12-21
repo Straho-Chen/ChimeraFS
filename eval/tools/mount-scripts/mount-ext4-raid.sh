@@ -1,7 +1,8 @@
 #!/bin/bash
 
 mount_script_dir=$(dirname "$(readlink -f "$BASH_SOURCE[0]")")
-$mount_script_dir/check-pm-fsdax.sh
+$mount_script_dir/check-pm-fsdax.sh 0
+$mount_script_dir/check-pm-fsdax.sh 1
 
 set -euxo pipefail
 

@@ -9,7 +9,7 @@ ABS_PATH=$(where_is_script "$0")
 
 # mount script path
 
-MOUNT_SCRIPT_PATH=$ABS_PATH/mount-script
+MOUNT_SCRIPT_PATH=$ABS_PATH/mount-scripts
 
 fs=$1
 $MOUNT_SCRIPT_PATH/umount-$fs.sh

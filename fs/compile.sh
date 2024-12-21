@@ -1,18 +1,23 @@
 #!/bin/bash
 
 sudo -v
-fs=(pmfs nova winefs odinfs)
+
+timing=1
+
+# fs=(pmfs nova winefs odinfs)
+fs=(odinfs)
 
 # Work around, will fix
 sudo modprobe nova
 sudo rmmod nova
+sudo rm -rf /dev/pmem_ar*
 
 for i in ${fs[@]}; do
     cd $i
     make clean && make -j
     sudo rmmod $i
-    sudo insmod $i.ko
-    sudo insmod build/$i.ko
+    sudo insmod $i.ko measure_timing=$timing
+    sudo insmod build/$i.ko measure_timing=$timing
     cd -
 done
 

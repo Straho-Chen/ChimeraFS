@@ -1,4 +1,6 @@
 /linux/
+build/
+
 *.o
 *.cmd
 *.ko

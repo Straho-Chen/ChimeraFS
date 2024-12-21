@@ -14,4 +14,3 @@ install:
 .PHONY: clean
 clean:
 	rm -rf parradm
-	rm -rf /dev/pmem_ar*
