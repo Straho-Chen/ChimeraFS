@@ -464,7 +464,7 @@ static int nova_set_vma_read(struct vm_area_struct *vma)
 		}
 	}
 
-	flush_tlb_mm(vma->vm_mm);
+	flush_tlb_mm_range(vma->vm_mm, vma->vm_start, vma->vm_end, 0, false);
 
 out:
 	mmap_write_unlock(mm);
