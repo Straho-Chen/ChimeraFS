@@ -19,7 +19,6 @@
  */
 
 #include "nova.h"
-#include "inode.h"
 
 const char *proc_dirname = "fs/NOVA";
 struct proc_dir_entry *nova_proc_root;

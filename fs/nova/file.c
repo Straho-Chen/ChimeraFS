@@ -21,7 +21,6 @@
 #include <linux/falloc.h>
 #include <asm/mman.h>
 #include "nova.h"
-#include "inode.h"
 
 static inline int nova_can_set_blocksize_hint(struct inode *inode,
 					      struct nova_inode *pi,

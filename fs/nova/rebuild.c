@@ -15,9 +15,8 @@
  * warranty of any kind, whether express or implied.
  */
 
-#include "nova.h"
-#include "inode.h"
 #include <linux/pagevec.h>
+#include "nova.h"
 
 /* entry given to this function is a copy in dram */
 static void nova_apply_setattr_entry(struct super_block *sb,

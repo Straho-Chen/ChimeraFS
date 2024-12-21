@@ -18,7 +18,6 @@
 #include <linux/fs.h>
 #include <linux/pagemap.h>
 #include "nova.h"
-#include "inode.h"
 
 #define DT2IF(dt) (((dt) << 12) & S_IFMT)
 #define IF2DT(sif) (((sif)&S_IFMT) >> 12)

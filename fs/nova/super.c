@@ -40,8 +40,6 @@
 #include <linux/dax.h>
 #include "nova.h"
 #include "journal.h"
-#include "super.h"
-#include "inode.h"
 
 int measure_timing;
 int metadata_csum;

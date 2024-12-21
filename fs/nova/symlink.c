@@ -22,10 +22,10 @@
 #include <linux/namei.h>
 #include <linux/version.h>
 #include "nova.h"
-#include "inode.h"
 
 int nova_block_symlink(struct super_block *sb, struct nova_inode *pi,
-	struct inode *inode, const char *symname, int len, u64 epoch_id)
+		       struct inode *inode, const char *symname, int len,
+		       u64 epoch_id)
 {
 	struct nova_file_write_entry entry_data;
 	struct nova_inode_info *si = NOVA_I(inode);
@@ -43,7 +43,8 @@ int nova_block_symlink(struct super_block *sb, struct nova_inode *pi,
 	update.alter_tail = sih->alter_log_tail;
 
 	allocated = nova_new_data_blocks(sb, sih, &name_blocknr, 0, 1,
-				 ALLOC_INIT_ZERO, ANY_CPU, ALLOC_FROM_TAIL);
+					 ALLOC_INIT_ZERO, ANY_CPU,
+					 ALLOC_FROM_TAIL);
 	if (allocated != 1 || name_blocknr == 0) {
 		ret = allocated;
 		return ret;
@@ -61,12 +62,12 @@ int nova_block_symlink(struct super_block *sb, struct nova_inode *pi,
 	/* Apply a write entry to the log page */
 	time = current_time(inode).tv_sec;
 	nova_init_file_write_entry(sb, sih, &entry_data, epoch_id, 0, 1,
-					name_blocknr, time, len + 1);
+				   name_blocknr, time, len + 1);
 
 	ret = nova_append_file_write_entry(sb, pi, inode, &entry_data, &update);
 	if (ret) {
-		nova_dbg("%s: append file write entry failed %d\n",
-					__func__, ret);
+		nova_dbg("%s: append file write entry failed %d\n", __func__,
+			 ret);
 		nova_free_data_blocks(sb, sih, name_blocknr, 1);
 		return ret;
 	}
@@ -88,7 +89,7 @@ static int nova_readlink_copy(char __user *buffer, int buflen, const char *link)
 		goto out;
 
 	len = strlen(link);
-	if (len > (unsigned int) buflen)
+	if (len > (unsigned int)buflen)
 		len = buflen;
 	if (copy_to_user(buffer, link, len))
 		len = -EFAULT;
@@ -107,7 +108,7 @@ static int nova_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 	char *blockp;
 
 	entry = (struct nova_file_write_entry *)nova_get_block(sb,
-							sih->log_head);
+							       sih->log_head);
 
 	if (metadata_csum == 0)
 		entryc = entry;
@@ -123,7 +124,7 @@ static int nova_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 }
 
 static const char *nova_get_link(struct dentry *dentry, struct inode *inode,
-	struct delayed_call *done)
+				 struct delayed_call *done)
 {
 	struct nova_file_write_entry *entry;
 	struct nova_file_write_entry *entryc, entry_copy;
@@ -133,7 +134,7 @@ static const char *nova_get_link(struct dentry *dentry, struct inode *inode,
 	char *blockp;
 
 	entry = (struct nova_file_write_entry *)nova_get_block(sb,
-							sih->log_head);
+							       sih->log_head);
 	if (metadata_csum == 0)
 		entryc = entry;
 	else {
@@ -148,7 +149,7 @@ static const char *nova_get_link(struct dentry *dentry, struct inode *inode,
 }
 
 const struct inode_operations nova_symlink_inode_operations = {
-	.readlink	= nova_readlink,
-	.get_link	= nova_get_link,
-	.setattr	= nova_notify_change,
+	.readlink = nova_readlink,
+	.get_link = nova_get_link,
+	.setattr = nova_notify_change,
 };

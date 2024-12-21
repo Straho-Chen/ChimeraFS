@@ -16,11 +16,11 @@
  */
 
 #include "nova.h"
-#include "inode.h"
 
 static bool curr_log_entry_invalid(struct super_block *sb,
-	struct nova_inode *pi, struct nova_inode_info_header *sih,
-	u64 curr_p, size_t *length)
+				   struct nova_inode *pi,
+				   struct nova_inode_info_header *sih,
+				   u64 curr_p, size_t *length)
 {
 	struct nova_file_write_entry *entry;
 	struct nova_dentry *dentry;
@@ -49,25 +49,25 @@ static bool curr_log_entry_invalid(struct super_block *sb,
 	type = nova_get_entry_type(entryc);
 	switch (type) {
 	case SET_ATTR:
-		setattr_entry = (struct nova_setattr_logentry *) entryc;
+		setattr_entry = (struct nova_setattr_logentry *)entryc;
 		if (setattr_entry->invalid == 0)
 			ret = false;
 		*length = sizeof(struct nova_setattr_logentry);
 		break;
 	case LINK_CHANGE:
-		linkc_entry = (struct nova_link_change_entry *) entryc;
+		linkc_entry = (struct nova_link_change_entry *)entryc;
 		if (linkc_entry->invalid == 0)
 			ret = false;
 		*length = sizeof(struct nova_link_change_entry);
 		break;
 	case FILE_WRITE:
-		entry = (struct nova_file_write_entry *) entryc;
+		entry = (struct nova_file_write_entry *)entryc;
 		if (entry->num_pages != entry->invalid_pages)
 			ret = false;
 		*length = sizeof(struct nova_file_write_entry);
 		break;
 	case DIR_LOG:
-		dentry = (struct nova_dentry *) entryc;
+		dentry = (struct nova_dentry *)entryc;
 		if (dentry->invalid == 0)
 			ret = false;
 		if (sih->last_dentry == curr_p)
@@ -75,13 +75,13 @@ static bool curr_log_entry_invalid(struct super_block *sb,
 		*length = le16_to_cpu(dentry->de_len);
 		break;
 	case MMAP_WRITE:
-		mmap_entry = (struct nova_mmap_entry *) entryc;
+		mmap_entry = (struct nova_mmap_entry *)entryc;
 		if (mmap_entry->invalid == 0)
 			ret = false;
 		*length = sizeof(struct nova_mmap_entry);
 		break;
 	case SNAPSHOT_INFO:
-		sn_entry = (struct nova_snapshot_info_entry *) entryc;
+		sn_entry = (struct nova_snapshot_info_entry *)entryc;
 		if (sn_entry->deleted == 0)
 			ret = false;
 		*length = sizeof(struct nova_snapshot_info_entry);
@@ -91,8 +91,8 @@ static bool curr_log_entry_invalid(struct super_block *sb,
 		*length = PAGE_SIZE - ENTRY_LOC(curr_p);
 		break;
 	default:
-		nova_dbg("%s: unknown type %d, 0x%llx\n",
-					__func__, type, curr_p);
+		nova_dbg("%s: unknown type %d, 0x%llx\n", __func__, type,
+			 curr_p);
 		NOVA_ASSERT(0);
 		*length = PAGE_SIZE - ENTRY_LOC(curr_p);
 		break;
@@ -101,9 +101,8 @@ static bool curr_log_entry_invalid(struct super_block *sb,
 	return ret;
 }
 
-static bool curr_page_invalid(struct super_block *sb,
-	struct nova_inode *pi, struct nova_inode_info_header *sih,
-	u64 page_head)
+static bool curr_page_invalid(struct super_block *sb, struct nova_inode *pi,
+			      struct nova_inode_info_header *sih, u64 page_head)
 {
 	struct nova_inode_log_page *curr_page;
 	struct nova_inode_page_tail page_tail;
@@ -115,8 +114,7 @@ static bool curr_page_invalid(struct super_block *sb,
 
 	NOVA_START_TIMING(check_invalid_t, check_time);
 
-	curr_page = (struct nova_inode_log_page *)
-					nova_get_block(sb, page_head);
+	curr_page = (struct nova_inode_log_page *)nova_get_block(sb, page_head);
 	if (memcpy(&page_tail, &curr_page->page_tail,
 		   sizeof(struct nova_inode_page_tail)) == NULL)
 		rc = -1;
@@ -141,25 +139,25 @@ static bool curr_page_invalid(struct super_block *sb,
 }
 
 static void free_curr_page(struct super_block *sb,
-	struct nova_inode_info_header *sih,
-	struct nova_inode_log_page *curr_page,
-	struct nova_inode_log_page *last_page, u64 curr_head)
+			   struct nova_inode_info_header *sih,
+			   struct nova_inode_log_page *curr_page,
+			   struct nova_inode_log_page *last_page, u64 curr_head)
 {
 	u8 btype = sih->i_blk_type;
 	unsigned long irq_flags = 0;
 
 	nova_memunlock_block(sb, last_page, &irq_flags);
 	nova_set_next_page_address(sb, last_page,
-			curr_page->page_tail.next_page, 1);
+				   curr_page->page_tail.next_page, 1);
 	nova_memlock_block(sb, last_page, &irq_flags);
-	nova_free_log_blocks(sb, sih,
-			nova_get_blocknr(sb, curr_head, btype), 1);
+	nova_free_log_blocks(sb, sih, nova_get_blocknr(sb, curr_head, btype),
+			     1);
 }
 
 static int nova_gc_assign_file_entry(struct super_block *sb,
-	struct nova_inode_info_header *sih,
-	struct nova_file_write_entry *old_entry,
-	struct nova_file_write_entry *new_entry)
+				     struct nova_inode_info_header *sih,
+				     struct nova_file_write_entry *old_entry,
+				     struct nova_file_write_entry *new_entry)
 {
 	struct nova_file_write_entry *temp;
 	void **pentry;
@@ -185,8 +183,9 @@ static int nova_gc_assign_file_entry(struct super_block *sb,
 }
 
 static int nova_gc_assign_dentry(struct super_block *sb,
-	struct nova_inode_info_header *sih, struct nova_dentry *old_dentry,
-	struct nova_dentry *new_dentry)
+				 struct nova_inode_info_header *sih,
+				 struct nova_dentry *old_dentry,
+				 struct nova_dentry *new_dentry)
 {
 	struct nova_range_node *ret_node = NULL;
 	unsigned long hash;
@@ -194,12 +193,10 @@ static int nova_gc_assign_dentry(struct super_block *sb,
 	int ret = 0;
 
 	hash = BKDRHash(old_dentry->name, old_dentry->name_len);
-	nova_dbgv("%s: assign %s hash %lu\n", __func__,
-			old_dentry->name, hash);
+	nova_dbgv("%s: assign %s hash %lu\n", __func__, old_dentry->name, hash);
 
 	/* FIXME: hash collision ignored here */
-	found = nova_find_range_node(&sih->rb_tree, hash,
-				NODE_DIR, &ret_node);
+	found = nova_find_range_node(&sih->rb_tree, hash, NODE_DIR, &ret_node);
 	if (found == 1 && hash == ret_node->hash) {
 		if (ret_node->direntry == old_dentry)
 			ret_node->direntry = new_dentry;
@@ -209,7 +206,8 @@ static int nova_gc_assign_dentry(struct super_block *sb,
 }
 
 static int nova_gc_assign_mmap_entry(struct super_block *sb,
-	struct nova_inode_info_header *sih, u64 curr_p, u64 new_curr)
+				     struct nova_inode_info_header *sih,
+				     u64 curr_p, u64 new_curr)
 {
 	struct vma_item *item;
 	struct rb_node *temp;
@@ -231,16 +229,15 @@ static int nova_gc_assign_mmap_entry(struct super_block *sb,
 	return ret;
 }
 
-static int nova_gc_assign_snapshot_entry(struct super_block *sb,
-	struct nova_inode_info_header *sih,
+static int nova_gc_assign_snapshot_entry(
+	struct super_block *sb, struct nova_inode_info_header *sih,
 	struct nova_snapshot_info_entry *old_entry, u64 curr_p, u64 new_curr)
 {
 	struct nova_sb_info *sbi = NOVA_SB(sb);
 	struct snapshot_info *info;
 	int ret = 0;
 
-	info = radix_tree_lookup(&sbi->snapshot_info_tree,
-				old_entry->epoch_id);
+	info = radix_tree_lookup(&sbi->snapshot_info_tree, old_entry->epoch_id);
 
 	if (info && info->snapshot_entry == curr_p)
 		info->snapshot_entry = new_curr;
@@ -249,8 +246,9 @@ static int nova_gc_assign_snapshot_entry(struct super_block *sb,
 }
 
 static int nova_gc_assign_new_entry(struct super_block *sb,
-	struct nova_inode *pi, struct nova_inode_info_header *sih,
-	u64 curr_p, u64 new_curr)
+				    struct nova_inode *pi,
+				    struct nova_inode_info_header *sih,
+				    u64 curr_p, u64 new_curr)
 {
 	struct nova_file_write_entry *old_entry, *new_entry;
 	struct nova_dentry *old_dentry, *new_dentry;
@@ -271,8 +269,8 @@ static int nova_gc_assign_new_entry(struct super_block *sb,
 		ret = nova_gc_assign_mmap_entry(sb, sih, curr_p, new_curr);
 		break;
 	case SNAPSHOT_INFO:
-		ret = nova_gc_assign_snapshot_entry(sb, sih, addr,
-						curr_p, new_curr);
+		ret = nova_gc_assign_snapshot_entry(sb, sih, addr, curr_p,
+						    new_curr);
 		break;
 	case FILE_WRITE:
 		new_addr = (void *)nova_get_block(sb, new_curr);
@@ -289,8 +287,8 @@ static int nova_gc_assign_new_entry(struct super_block *sb,
 		ret = nova_gc_assign_dentry(sb, sih, old_dentry, new_dentry);
 		break;
 	default:
-		nova_dbg("%s: unknown type %d, 0x%llx\n",
-					__func__, type, curr_p);
+		nova_dbg("%s: unknown type %d, 0x%llx\n", __func__, type,
+			 curr_p);
 		NOVA_ASSERT(0);
 		break;
 	}
@@ -299,9 +297,10 @@ static int nova_gc_assign_new_entry(struct super_block *sb,
 }
 
 /* Copy live log entries to the new log and atomically replace the old log */
-static unsigned long nova_inode_log_thorough_gc(struct super_block *sb,
-	struct nova_inode *pi, struct nova_inode_info_header *sih,
-	unsigned long blocks, unsigned long checked_pages)
+static unsigned long
+nova_inode_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
+			   struct nova_inode_info_header *sih,
+			   unsigned long blocks, unsigned long checked_pages)
 {
 	struct nova_inode_log_page *curr_page = NULL;
 	size_t length;
@@ -324,19 +323,19 @@ static unsigned long nova_inode_log_thorough_gc(struct super_block *sb,
 	curr_p = sih->log_head;
 	old_curr_p = curr_p;
 	old_head = sih->log_head;
-	nova_dbg_verbose("Log head 0x%llx, tail 0x%llx\n",
-				curr_p, sih->log_tail);
+	nova_dbg_verbose("Log head 0x%llx, tail 0x%llx\n", curr_p,
+			 sih->log_tail);
 	if (curr_p == 0 && sih->log_tail == 0)
 		goto out;
 
 	if (curr_p >> PAGE_SHIFT == sih->log_tail >> PAGE_SHIFT)
 		goto out;
 
-	allocated = nova_allocate_inode_log_pages(sb, sih, blocks,
-					&new_head, ANY_CPU, 0);
+	allocated = nova_allocate_inode_log_pages(sb, sih, blocks, &new_head,
+						  ANY_CPU, 0);
 	if (allocated != blocks) {
 		nova_err(sb, "%s: ERROR: no inode log page available\n",
-					__func__);
+			 __func__);
 		goto out;
 	}
 
@@ -360,17 +359,20 @@ static unsigned long nova_inode_log_thorough_gc(struct super_block *sb,
 		ret = curr_log_entry_invalid(sb, pi, sih, curr_p, &length);
 		if (!ret) {
 			extended = 0;
-			new_curr = nova_get_append_head(sb, pi, sih,
-						new_curr, length, MAIN_LOG,
-						1, &extended);
+			new_curr = nova_get_append_head(sb, pi, sih, new_curr,
+							length, MAIN_LOG, 1,
+							&extended);
 			if (extended)
 				blocks++;
 			/* Copy entry to the new log */
-			nova_memunlock_block(sb, nova_get_block(sb, new_curr), &irq_flags);
+			nova_memunlock_block(sb, nova_get_block(sb, new_curr),
+					     &irq_flags);
 			memcpy_to_pmem_nocache(nova_get_block(sb, new_curr),
-				nova_get_block(sb, curr_p), length);
+					       nova_get_block(sb, curr_p),
+					       length);
 			nova_inc_page_num_entries(sb, new_curr);
-			nova_memlock_block(sb, nova_get_block(sb, new_curr), &irq_flags);
+			nova_memlock_block(sb, nova_get_block(sb, new_curr),
+					   &irq_flags);
 			nova_gc_assign_new_entry(sb, pi, sih, curr_p, new_curr);
 			new_curr += length;
 		}
@@ -380,8 +382,8 @@ static unsigned long nova_inode_log_thorough_gc(struct super_block *sb,
 
 	/* Step 1: Link new log to the tail block */
 	tail_block = BLOCK_OFF(sih->log_tail);
-	curr_page = (struct nova_inode_log_page *)nova_get_block(sb,
-							BLOCK_OFF(new_curr));
+	curr_page = (struct nova_inode_log_page *)nova_get_block(
+		sb, BLOCK_OFF(new_curr));
 	next = next_log_page(sb, new_curr);
 	if (next > 0)
 		nova_free_contiguous_log_blocks(sb, sih, next);
@@ -396,8 +398,8 @@ static unsigned long nova_inode_log_thorough_gc(struct super_block *sb,
 	pi->log_head = new_head;
 	nova_update_inode_checksum(pi);
 	if (metadata_csum && sih->alter_pi_addr) {
-		alter_pi = (struct nova_inode *)nova_get_block(sb,
-						sih->alter_pi_addr);
+		alter_pi = (struct nova_inode *)nova_get_block(
+			sb, sih->alter_pi_addr);
 		memcpy_to_pmem_nocache(alter_pi, pi, sizeof(struct nova_inode));
 	}
 	nova_memlock_inode(sb, pi, &irq_flags);
@@ -405,13 +407,13 @@ static unsigned long nova_inode_log_thorough_gc(struct super_block *sb,
 	sih->log_head = new_head;
 
 	/* Step 3: Unlink the old log */
-	curr_page = (struct nova_inode_log_page *)nova_get_block(sb,
-							BLOCK_OFF(old_curr_p));
+	curr_page = (struct nova_inode_log_page *)nova_get_block(
+		sb, BLOCK_OFF(old_curr_p));
 	next = next_log_page(sb, old_curr_p);
 	if (next != tail_block) {
 		nova_err(sb, "Old log error: old curr_p 0x%lx, next 0x%lx ",
-			"curr_p 0x%lx, tail block 0x%lx\n", old_curr_p,
-			next, curr_p, tail_block);
+			 "curr_p 0x%lx, tail block 0x%lx\n", old_curr_p, next,
+			 curr_p, tail_block);
 		BUG();
 	}
 	nova_memunlock_block(sb, curr_page, &irq_flags);
@@ -430,9 +432,11 @@ out:
 }
 
 /* Copy original log to alternate log */
-static unsigned long nova_inode_alter_log_thorough_gc(struct super_block *sb,
-	struct nova_inode *pi, struct nova_inode_info_header *sih,
-	unsigned long blocks, unsigned long checked_pages)
+static unsigned long
+nova_inode_alter_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
+				 struct nova_inode_info_header *sih,
+				 unsigned long blocks,
+				 unsigned long checked_pages)
 {
 	struct nova_inode_log_page *alter_curr_page = NULL;
 	struct nova_inode *alter_pi;
@@ -452,8 +456,8 @@ static unsigned long nova_inode_alter_log_thorough_gc(struct super_block *sb,
 
 	curr_p = sih->log_head;
 	alter_old_head = sih->alter_log_head;
-	nova_dbg_verbose("Log head 0x%llx, tail 0x%llx\n",
-				curr_p, sih->log_tail);
+	nova_dbg_verbose("Log head 0x%llx, tail 0x%llx\n", curr_p,
+			 sih->log_tail);
 	if (curr_p == 0 && sih->log_tail == 0)
 		goto out;
 
@@ -463,22 +467,25 @@ static unsigned long nova_inode_alter_log_thorough_gc(struct super_block *sb,
 	if (alter_old_head >> PAGE_SHIFT == sih->alter_log_tail >> PAGE_SHIFT)
 		goto out;
 
-	allocated = nova_allocate_inode_log_pages(sb, sih, blocks,
-					&new_head, ANY_CPU, 1);
+	allocated = nova_allocate_inode_log_pages(sb, sih, blocks, &new_head,
+						  ANY_CPU, 1);
 	if (allocated != blocks) {
 		nova_err(sb, "%s: ERROR: no inode log page available\n",
-					__func__);
+			 __func__);
 		goto out;
 	}
 
 	new_curr = new_head;
 	while (1) {
-		nova_memunlock_block(sb, nova_get_block(sb, new_curr), &irq_flags);
+		nova_memunlock_block(sb, nova_get_block(sb, new_curr),
+				     &irq_flags);
 		memcpy_to_pmem_nocache(nova_get_block(sb, new_curr),
-				nova_get_block(sb, curr_p), LOG_BLOCK_TAIL);
+				       nova_get_block(sb, curr_p),
+				       LOG_BLOCK_TAIL);
 
 		nova_set_alter_page_address(sb, curr_p, new_curr);
-		nova_memlock_block(sb, nova_get_block(sb, new_curr), &irq_flags);
+		nova_memlock_block(sb, nova_get_block(sb, new_curr),
+				   &irq_flags);
 
 		curr_p = next_log_page(sb, curr_p);
 
@@ -497,8 +504,8 @@ static unsigned long nova_inode_alter_log_thorough_gc(struct super_block *sb,
 
 	/* Step 1: Link new log to the tail block */
 	alter_tail_block = BLOCK_OFF(sih->alter_log_tail);
-	alter_curr_page = (struct nova_inode_log_page *)nova_get_block(sb,
-							BLOCK_OFF(new_curr));
+	alter_curr_page = (struct nova_inode_log_page *)nova_get_block(
+		sb, BLOCK_OFF(new_curr));
 	alter_next = next_log_page(sb, new_curr);
 	if (alter_next > 0)
 		nova_free_contiguous_log_blocks(sb, sih, alter_next);
@@ -513,7 +520,7 @@ static unsigned long nova_inode_alter_log_thorough_gc(struct super_block *sb,
 		alter_curr_p = next_log_page(sb, alter_curr_p);
 
 		if (alter_curr_p >> PAGE_SHIFT ==
-				sih->alter_log_tail >> PAGE_SHIFT)
+		    sih->alter_log_tail >> PAGE_SHIFT)
 			break;
 
 		if (alter_curr_p == 0) {
@@ -527,8 +534,8 @@ static unsigned long nova_inode_alter_log_thorough_gc(struct super_block *sb,
 	pi->alter_log_head = new_head;
 	nova_update_inode_checksum(pi);
 	if (metadata_csum && sih->alter_pi_addr) {
-		alter_pi = (struct nova_inode *)nova_get_block(sb,
-						sih->alter_pi_addr);
+		alter_pi = (struct nova_inode *)nova_get_block(
+			sb, sih->alter_pi_addr);
 		memcpy_to_pmem_nocache(alter_pi, pi, sizeof(struct nova_inode));
 	}
 	nova_memlock_inode(sb, pi, &irq_flags);
@@ -536,13 +543,13 @@ static unsigned long nova_inode_alter_log_thorough_gc(struct super_block *sb,
 	sih->alter_log_head = new_head;
 
 	/* Step 4: Unlink the old log */
-	alter_curr_page = (struct nova_inode_log_page *)nova_get_block(sb,
-						BLOCK_OFF(old_alter_curr_p));
+	alter_curr_page = (struct nova_inode_log_page *)nova_get_block(
+		sb, BLOCK_OFF(old_alter_curr_p));
 	alter_next = next_log_page(sb, old_alter_curr_p);
 	if (alter_next != alter_tail_block) {
 		nova_err(sb, "Old log error: old curr_p 0x%lx, next 0x%lx ",
-			"curr_p 0x%lx, tail block 0x%lx\n", old_alter_curr_p,
-			alter_next, alter_curr_p, alter_tail_block);
+			 "curr_p 0x%lx, tail block 0x%lx\n", old_alter_curr_p,
+			 alter_next, alter_curr_p, alter_tail_block);
 		BUG();
 	}
 	nova_memunlock_block(sb, alter_curr_page, &irq_flags);
@@ -563,10 +570,10 @@ out:
 /*
  * Scan pages in the log and remove those with no valid log entries.
  */
-int nova_inode_log_fast_gc(struct super_block *sb,
-	struct nova_inode *pi, struct nova_inode_info_header *sih,
-	u64 curr_tail, u64 new_block, u64 alter_new_block,
-	int num_pages, int force_thorough)
+int nova_inode_log_fast_gc(struct super_block *sb, struct nova_inode *pi,
+			   struct nova_inode_info_header *sih, u64 curr_tail,
+			   u64 new_block, u64 alter_new_block, int num_pages,
+			   int force_thorough)
 {
 	struct nova_inode *alter_pi;
 	u64 curr, next, possible_head = 0;
@@ -595,8 +602,8 @@ int nova_inode_log_fast_gc(struct super_block *sb,
 	if (metadata_csum)
 		num_logs = 2;
 
-	nova_dbgv("%s: log head 0x%llx, tail 0x%llx\n",
-				__func__, curr, curr_tail);
+	nova_dbgv("%s: log head 0x%llx, tail 0x%llx\n", __func__, curr,
+		  curr_tail);
 	while (1) {
 		if (curr >> PAGE_SHIFT == sih->log_tail >> PAGE_SHIFT) {
 			/* Don't recycle tail page */
@@ -607,15 +614,16 @@ int nova_inode_log_fast_gc(struct super_block *sb,
 			break;
 		}
 
-		curr_page = (struct nova_inode_log_page *)
-					nova_get_block(sb, curr);
+		curr_page =
+			(struct nova_inode_log_page *)nova_get_block(sb, curr);
 		next = next_log_page(sb, curr);
 		if (next < 0)
 			break;
 
 		if (metadata_csum) {
-			alter_curr_page = (struct nova_inode_log_page *)
-						nova_get_block(sb, alter_curr);
+			alter_curr_page =
+				(struct nova_inode_log_page *)nova_get_block(
+					sb, alter_curr);
 			alter_next = next_log_page(sb, alter_curr);
 			if (alter_next < 0)
 				break;
@@ -630,12 +638,13 @@ int nova_inode_log_fast_gc(struct super_block *sb,
 				alter_last_page = alter_curr_page;
 			} else {
 				nova_dbg_verbose("Free log block 0x%llx\n",
-						curr >> PAGE_SHIFT);
+						 curr >> PAGE_SHIFT);
 				free_curr_page(sb, sih, curr_page, last_page,
-						curr);
+					       curr);
 				if (metadata_csum)
 					free_curr_page(sb, sih, alter_curr_page,
-						alter_last_page, alter_curr);
+						       alter_last_page,
+						       alter_curr);
 			}
 			NOVA_STATS_ADD(fast_gc_pages, 1);
 			freed_pages++;
@@ -663,8 +672,8 @@ int nova_inode_log_fast_gc(struct super_block *sb,
 	// TODO:  I think this belongs in nova_extend_inode_log.
 	if (num_pages > 0) {
 		curr = BLOCK_OFF(curr_tail);
-		curr_page = (struct nova_inode_log_page *)
-						  nova_get_block(sb, curr);
+		curr_page =
+			(struct nova_inode_log_page *)nova_get_block(sb, curr);
 
 		nova_memunlock_block(sb, curr_page, &irq_flags);
 		nova_set_next_page_address(sb, curr_page, new_block, 1);
@@ -676,8 +685,9 @@ int nova_inode_log_fast_gc(struct super_block *sb,
 			while (next_log_page(sb, alter_curr) > 0)
 				alter_curr = next_log_page(sb, alter_curr);
 
-			alter_curr_page = (struct nova_inode_log_page *)
-				nova_get_block(sb, alter_curr);
+			alter_curr_page =
+				(struct nova_inode_log_page *)nova_get_block(
+					sb, alter_curr);
 			nova_memunlock_block(sb, curr_page, &irq_flags);
 			nova_set_next_page_address(sb, alter_curr_page,
 						   alter_new_block, 1);
@@ -693,26 +703,27 @@ int nova_inode_log_fast_gc(struct super_block *sb,
 	pi->alter_log_head = alter_possible_head;
 	nova_update_inode_checksum(pi);
 	if (metadata_csum && sih->alter_pi_addr) {
-		alter_pi = (struct nova_inode *)nova_get_block(sb,
-						sih->alter_pi_addr);
+		alter_pi = (struct nova_inode *)nova_get_block(
+			sb, sih->alter_pi_addr);
 		memcpy_to_pmem_nocache(alter_pi, pi, sizeof(struct nova_inode));
 	}
 	nova_memlock_inode(sb, pi, &irq_flags);
 	sih->log_head = possible_head;
 	sih->alter_log_head = alter_possible_head;
-	nova_dbgv("%s: %d new head 0x%llx\n", __func__,
-					found_head, possible_head);
+	nova_dbgv("%s: %d new head 0x%llx\n", __func__, found_head,
+		  possible_head);
 	sih->log_pages += (num_pages - freed_pages) * num_logs;
 	/* Don't update log tail pointer here */
 	nova_flush_buffer(&pi->log_head, CACHELINE_SIZE, 1);
 
 	if (first_need_free) {
 		nova_dbg_verbose("Free log head block 0x%llx\n",
-					curr >> PAGE_SHIFT);
-		nova_free_log_blocks(sb, sih,
-				nova_get_blocknr(sb, curr, btype), 1);
+				 curr >> PAGE_SHIFT);
+		nova_free_log_blocks(sb, sih, nova_get_blocknr(sb, curr, btype),
+				     1);
 		if (metadata_csum)
-			nova_free_log_blocks(sb, sih,
+			nova_free_log_blocks(
+				sb, sih,
 				nova_get_blocknr(sb, alter_curr, btype), 1);
 	}
 
@@ -731,14 +742,14 @@ int nova_inode_log_fast_gc(struct super_block *sb,
 		blocks++;
 
 	if (force_thorough || (blocks && blocks * 2 < checked_pages)) {
-		nova_dbgv("Thorough GC for inode %lu: checked pages %lu, valid pages %lu\n",
-				sih->ino,
-				checked_pages, blocks);
-		blocks = nova_inode_log_thorough_gc(sb, pi, sih,
-							blocks, checked_pages);
+		nova_dbgv(
+			"Thorough GC for inode %lu: checked pages %lu, valid pages %lu\n",
+			sih->ino, checked_pages, blocks);
+		blocks = nova_inode_log_thorough_gc(sb, pi, sih, blocks,
+						    checked_pages);
 		if (metadata_csum)
-			nova_inode_alter_log_thorough_gc(sb, pi, sih,
-							blocks, checked_pages);
+			nova_inode_alter_log_thorough_gc(sb, pi, sih, blocks,
+							 checked_pages);
 	}
 
 	return 0;

@@ -19,12 +19,11 @@
 #include <linux/compat.h>
 #include <linux/mount.h>
 #include "nova.h"
-#include "inode.h"
 
 long nova_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct address_space *mapping = filp->f_mapping;
-	struct inode    *inode = mapping->host;
+	struct inode *inode = mapping->host;
 	struct nova_inode_info *si = NOVA_I(inode);
 	struct nova_inode_info_header *sih = &si->header;
 	struct nova_inode *pi;
@@ -65,8 +64,7 @@ long nova_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		inode_lock(inode);
 		oldflags = le32_to_cpu(pi->i_flags);
 
-		if ((flags ^ oldflags) &
-		    (FS_APPEND_FL | FS_IMMUTABLE_FL)) {
+		if ((flags ^ oldflags) & (FS_APPEND_FL | FS_IMMUTABLE_FL)) {
 			if (!capable(CAP_LINUX_IMMUTABLE)) {
 				ret = -EPERM;
 				goto flags_out_unlock;
@@ -85,8 +83,8 @@ long nova_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		update.tail = 0;
 		update.alter_tail = 0;
-		ret = nova_append_link_change_entry(sb, pi, inode,
-					&update, &old_linkc, epoch_id);
+		ret = nova_append_link_change_entry(sb, pi, inode, &update,
+						    &old_linkc, epoch_id);
 		if (!ret) {
 			nova_memunlock_inode(sb, pi, &irq_flags);
 			nova_update_inode(sb, inode, pi, &update, 1);
@@ -124,8 +122,8 @@ flags_out:
 
 		update.tail = 0;
 		update.alter_tail = 0;
-		ret = nova_append_link_change_entry(sb, pi, inode,
-					&update, &old_linkc, epoch_id);
+		ret = nova_append_link_change_entry(sb, pi, inode, &update,
+						    &old_linkc, epoch_id);
 		if (!ret) {
 			nova_memunlock_inode(sb, pi, &irq_flags);
 			nova_update_inode(sb, inode, pi, &update, 1);

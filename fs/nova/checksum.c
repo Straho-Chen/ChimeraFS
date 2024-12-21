@@ -16,10 +16,10 @@
  */
 
 #include "nova.h"
-#include "inode.h"
 
 static int nova_get_entry_copy(struct super_block *sb, void *entry,
-	u32 *entry_csum, size_t *entry_size, void *entry_copy)
+			       u32 *entry_csum, size_t *entry_size,
+			       void *entry_copy)
 {
 	u8 type;
 	struct nova_dentry *dentry;
@@ -37,9 +37,9 @@ static int nova_get_entry_copy(struct super_block *sb, void *entry,
 		if (ret < 0 || dentry->de_len > NOVA_MAX_ENTRY_LEN)
 			break;
 		*entry_size = dentry->de_len;
-		if (memcpy((u8 *) dentry + NOVA_DENTRY_HEADER_LEN,
-					(u8 *) entry + NOVA_DENTRY_HEADER_LEN,
-					*entry_size - NOVA_DENTRY_HEADER_LEN) == NULL)
+		if (memcpy((u8 *)dentry + NOVA_DENTRY_HEADER_LEN,
+			   (u8 *)entry + NOVA_DENTRY_HEADER_LEN,
+			   *entry_size - NOVA_DENTRY_HEADER_LEN) == NULL)
 			break;
 		*entry_csum = dentry->csum;
 		break;
@@ -76,8 +76,9 @@ static int nova_get_entry_copy(struct super_block *sb, void *entry,
 	default:
 		*entry_csum = 0;
 		*entry_size = 0;
-		nova_dbg("%s: unknown or unsupported entry type (%d) for checksum, 0x%llx\n",
-			 __func__, type, (u64)entry);
+		nova_dbg(
+			"%s: unknown or unsupported entry type (%d) for checksum, 0x%llx\n",
+			__func__, type, (u64)entry);
 		ret = -EINVAL;
 		dump_stack();
 		break;
@@ -102,7 +103,7 @@ static u32 nova_calc_entry_csum(void *entry)
 	switch (type) {
 	/* nova_dentry has variable length due to its name. */
 	case DIR_LOG:
-		entry_len =  DENTRY(entry)->de_len;
+		entry_len = DENTRY(entry)->de_len;
 		csum_addr = &DENTRY(entry)->csum;
 		break;
 	case FILE_WRITE:
@@ -128,23 +129,24 @@ static u32 nova_calc_entry_csum(void *entry)
 	default:
 		entry_len = 0;
 		csum_addr = NULL;
-		nova_dbg("%s: unknown or unsupported entry type (%d) for checksum, 0x%llx\n",
-			 __func__, type, (u64) entry);
+		nova_dbg(
+			"%s: unknown or unsupported entry type (%d) for checksum, 0x%llx\n",
+			__func__, type, (u64)entry);
 		break;
 	}
 
 	if (entry_len > 0) {
-		check_len = ((u8 *) csum_addr) - ((u8 *) entry);
+		check_len = ((u8 *)csum_addr) - ((u8 *)entry);
 		csum = nova_crc32c(NOVA_INIT_CSUM, entry, check_len);
 		check_len = entry_len - (check_len + NOVA_META_CSUM_LEN);
 		if (check_len > 0) {
-			remain = ((u8 *) csum_addr) + NOVA_META_CSUM_LEN;
+			remain = ((u8 *)csum_addr) + NOVA_META_CSUM_LEN;
 			csum = nova_crc32c(csum, remain, check_len);
 		}
 
 		if (check_len < 0) {
 			nova_dbg("%s: checksum run-length error %ld < 0",
-				__func__, check_len);
+				 __func__, check_len);
 		}
 	}
 
@@ -155,7 +157,7 @@ static u32 nova_calc_entry_csum(void *entry)
 /* Update the log entry checksum. */
 void nova_update_entry_csum(void *entry)
 {
-	u8  type;
+	u8 type;
 	u32 csum;
 	size_t entry_len = CACHELINE_SIZE;
 
@@ -193,14 +195,13 @@ void nova_update_entry_csum(void *entry)
 	default:
 		entry_len = 0;
 		nova_dbg("%s: unknown or unsupported entry type (%d), 0x%llx\n",
-			__func__, type, (u64) entry);
+			 __func__, type, (u64)entry);
 		break;
 	}
 
 flush:
 	if (entry_len > 0)
 		nova_flush_buffer(entry, entry_len, 0);
-
 }
 
 int nova_update_alter_entry(struct super_block *sb, void *entry)
@@ -248,8 +249,8 @@ static int nova_repair_entry_pr(struct super_block *sb, void *entry)
 		goto fail;
 	}
 
-	entry_pr = (void *) nova_get_block(sb, entry_off & POISON_MASK);
-	alter_pr = (void *) nova_get_block(sb, alter_off & POISON_MASK);
+	entry_pr = (void *)nova_get_block(sb, entry_off & POISON_MASK);
+	alter_pr = (void *)nova_get_block(sb, alter_off & POISON_MASK);
 
 	if (entry_pr == NULL || alter_pr == NULL)
 		BUG();
@@ -273,7 +274,7 @@ fail:
 }
 
 static int nova_repair_entry(struct super_block *sb, void *bad, void *good,
-	size_t entry_size)
+			     size_t entry_size)
 {
 	int ret;
 	unsigned long irq_flags = 0;
@@ -315,7 +316,7 @@ bool nova_verify_entry_csum(struct super_block *sb, void *entry, void *entryc)
 			goto fail;
 		/* try again */
 		ret = nova_get_entry_copy(sb, entry, &entry_csum, &entry_size,
-						entry_copy);
+					  entry_copy);
 		if (ret < 0)
 			goto fail;
 	}
@@ -327,16 +328,16 @@ bool nova_verify_entry_csum(struct super_block *sb, void *entry, void *entryc)
 		goto fail;
 	}
 
-	alter = (void *) nova_get_block(sb, alter_off);
+	alter = (void *)nova_get_block(sb, alter_off);
 	ret = nova_get_entry_copy(sb, alter, &alter_csum, &alter_size,
-					alter_copy);
+				  alter_copy);
 	if (ret < 0) { /* media error */
 		ret = nova_repair_entry_pr(sb, alter);
 		if (ret < 0)
 			goto fail;
 		/* try again */
 		ret = nova_get_entry_copy(sb, alter, &alter_csum, &alter_size,
-						alter_copy);
+					  alter_copy);
 		if (ret < 0)
 			goto fail;
 	}
@@ -348,20 +349,24 @@ bool nova_verify_entry_csum(struct super_block *sb, void *entry, void *entryc)
 	alter_csum_calc = nova_calc_entry_csum(alter_copy);
 
 	if (entry_csum != entry_csum_calc && alter_csum != alter_csum_calc) {
-		nova_err(sb, "%s: both entry and its replica fail checksum verification\n",
-			 __func__);
+		nova_err(
+			sb,
+			"%s: both entry and its replica fail checksum verification\n",
+			__func__);
 		goto fail;
 	} else if (entry_csum != entry_csum_calc) {
-		nova_dbg("%s: entry %p checksum error, trying to repair using the replica\n",
-			 __func__, entry);
+		nova_dbg(
+			"%s: entry %p checksum error, trying to repair using the replica\n",
+			__func__, entry);
 		ret = nova_repair_entry(sb, entry, alter_copy, alter_size);
 		if (ret != 0)
 			goto fail;
 
 		memcpy(entryc, alter_copy, alter_size);
 	} else if (alter_csum != alter_csum_calc) {
-		nova_dbg("%s: entry replica %p checksum error, trying to repair using the primary\n",
-			 __func__, alter);
+		nova_dbg(
+			"%s: entry replica %p checksum error, trying to repair using the primary\n",
+			__func__, alter);
 		ret = nova_repair_entry(sb, alter, entry_copy, entry_size);
 		if (ret != 0)
 			goto fail;
@@ -372,8 +377,9 @@ bool nova_verify_entry_csum(struct super_block *sb, void *entry, void *entryc)
 		 * is trusted if their buffers don't match
 		 */
 		if (memcmp(entry_copy, alter_copy, entry_size)) {
-			nova_dbg("%s: entry replica %p error, trying to repair using the primary\n",
-				 __func__, alter);
+			nova_dbg(
+				"%s: entry replica %p error, trying to repair using the primary\n",
+				__func__, alter);
 			ret = nova_repair_entry(sb, alter, entry_copy,
 						entry_size);
 			if (ret != 0)
@@ -395,14 +401,15 @@ fail:
 
 /* media error: repair the poison radius that the inode belongs to */
 static int nova_repair_inode_pr(struct super_block *sb,
-	struct nova_inode *bad_pi, struct nova_inode *good_pi)
+				struct nova_inode *bad_pi,
+				struct nova_inode *good_pi)
 {
 	int ret;
 	void *bad_pr, *good_pr;
 	unsigned long irq_flags = 0;
 
-	bad_pr = (void *)((u64) bad_pi & POISON_MASK);
-	good_pr = (void *)((u64) good_pi & POISON_MASK);
+	bad_pr = (void *)((u64)bad_pi & POISON_MASK);
+	good_pr = (void *)((u64)good_pi & POISON_MASK);
 
 	if (bad_pr == NULL || good_pr == NULL)
 		BUG();
@@ -426,19 +433,19 @@ fail:
 }
 
 static int nova_repair_inode(struct super_block *sb, struct nova_inode *bad_pi,
-	struct nova_inode *good_copy)
+			     struct nova_inode *good_copy)
 {
 	int ret;
 	unsigned long irq_flags = 0;
 
 	nova_memunlock_inode(sb, bad_pi, &irq_flags);
 	ret = memcpy_to_pmem_nocache(bad_pi, good_copy,
-					sizeof(struct nova_inode));
+				     sizeof(struct nova_inode));
 	nova_memlock_inode(sb, bad_pi, &irq_flags);
 
 	if (ret == 0)
 		nova_dbg("%s: inode %llu error repaired\n", __func__,
-					good_copy->nova_ino);
+			 good_copy->nova_ino);
 
 	return ret;
 }
@@ -450,7 +457,8 @@ static int nova_repair_inode(struct super_block *sb, struct nova_inode *bad_pi,
  * the inode, also check the alter even if the major inode checks ok.
  */
 int nova_check_inode_integrity(struct super_block *sb, u64 ino, u64 pi_addr,
-	u64 alter_pi_addr, struct nova_inode *pic, int check_replica)
+			       u64 alter_pi_addr, struct nova_inode *pic,
+			       int check_replica)
 {
 	struct nova_inode *pi, *alter_pi, alter_copy, *alter_pic;
 	int inode_bad, alter_bad;
@@ -492,8 +500,8 @@ int nova_check_inode_integrity(struct super_block *sb, u64 ino, u64 pi_addr,
 		if (ret < 0)
 			goto fail;
 		/* try again */
-		if (memcpy(alter_pic, alter_pi,
-			   sizeof(struct nova_inode)) == NULL)
+		if (memcpy(alter_pic, alter_pi, sizeof(struct nova_inode)) ==
+		    NULL)
 			ret = -1;
 		if (ret < 0)
 			goto fail;
@@ -502,12 +510,15 @@ int nova_check_inode_integrity(struct super_block *sb, u64 ino, u64 pi_addr,
 	alter_bad = nova_check_inode_checksum(alter_pic);
 
 	if (inode_bad && alter_bad) {
-		nova_err(sb, "%s: both inode and its replica fail checksum verification\n",
-			 __func__);
+		nova_err(
+			sb,
+			"%s: both inode and its replica fail checksum verification\n",
+			__func__);
 		goto fail;
 	} else if (inode_bad) {
-		nova_dbg("%s: inode %llu checksum error, trying to repair using the replica\n",
-			 __func__, ino);
+		nova_dbg(
+			"%s: inode %llu checksum error, trying to repair using the replica\n",
+			__func__, ino);
 		nova_print_inode(pi);
 		nova_print_inode(alter_pi);
 		ret = nova_repair_inode(sb, pi, alter_pic);
@@ -516,14 +527,16 @@ int nova_check_inode_integrity(struct super_block *sb, u64 ino, u64 pi_addr,
 
 		memcpy(pic, alter_pic, sizeof(struct nova_inode));
 	} else if (alter_bad) {
-		nova_dbg("%s: inode replica %llu checksum error, trying to repair using the primary\n",
-			 __func__, ino);
+		nova_dbg(
+			"%s: inode replica %llu checksum error, trying to repair using the primary\n",
+			__func__, ino);
 		ret = nova_repair_inode(sb, alter_pi, pic);
 		if (ret != 0)
 			goto fail;
 	} else if (memcmp(pic, alter_pic, sizeof(struct nova_inode))) {
-		nova_dbg("%s: inode replica %llu is stale, trying to repair using the primary\n",
-			 __func__, ino);
+		nova_dbg(
+			"%s: inode replica %llu is stale, trying to repair using the primary\n",
+			__func__, ino);
 		ret = nova_repair_inode(sb, alter_pi, pic);
 		if (ret != 0)
 			goto fail;
@@ -538,7 +551,8 @@ fail:
 }
 
 static int nova_update_stripe_csum(struct super_block *sb, unsigned long strps,
-	unsigned long strp_nr, u8 *strp_ptr, int zero)
+				   unsigned long strp_nr, u8 *strp_ptr,
+				   int zero)
 {
 	struct nova_sb_info *sbi = NOVA_SB(sb);
 	size_t strp_size = NOVA_STRIPE_SIZE;
@@ -555,44 +569,45 @@ static int nova_update_stripe_csum(struct super_block *sb, unsigned long strps,
 			goto copy;
 		}
 
-		crc[0] = cpu_to_le32(nova_crc32c(NOVA_INIT_CSUM,
-				strp_ptr, strp_size));
-		crc[1] = cpu_to_le32(nova_crc32c(NOVA_INIT_CSUM,
-				strp_ptr + strp_size, strp_size));
-		crc[2] = cpu_to_le32(nova_crc32c(NOVA_INIT_CSUM,
-				strp_ptr + strp_size * 2, strp_size));
-		crc[3] = cpu_to_le32(nova_crc32c(NOVA_INIT_CSUM,
-				strp_ptr + strp_size * 3, strp_size));
-		crc[4] = cpu_to_le32(nova_crc32c(NOVA_INIT_CSUM,
-				strp_ptr + strp_size * 4, strp_size));
-		crc[5] = cpu_to_le32(nova_crc32c(NOVA_INIT_CSUM,
-				strp_ptr + strp_size * 5, strp_size));
-		crc[6] = cpu_to_le32(nova_crc32c(NOVA_INIT_CSUM,
-				strp_ptr + strp_size * 6, strp_size));
-		crc[7] = cpu_to_le32(nova_crc32c(NOVA_INIT_CSUM,
-				strp_ptr + strp_size * 7, strp_size));
+		crc[0] = cpu_to_le32(
+			nova_crc32c(NOVA_INIT_CSUM, strp_ptr, strp_size));
+		crc[1] = cpu_to_le32(nova_crc32c(
+			NOVA_INIT_CSUM, strp_ptr + strp_size, strp_size));
+		crc[2] = cpu_to_le32(nova_crc32c(
+			NOVA_INIT_CSUM, strp_ptr + strp_size * 2, strp_size));
+		crc[3] = cpu_to_le32(nova_crc32c(
+			NOVA_INIT_CSUM, strp_ptr + strp_size * 3, strp_size));
+		crc[4] = cpu_to_le32(nova_crc32c(
+			NOVA_INIT_CSUM, strp_ptr + strp_size * 4, strp_size));
+		crc[5] = cpu_to_le32(nova_crc32c(
+			NOVA_INIT_CSUM, strp_ptr + strp_size * 5, strp_size));
+		crc[6] = cpu_to_le32(nova_crc32c(
+			NOVA_INIT_CSUM, strp_ptr + strp_size * 6, strp_size));
+		crc[7] = cpu_to_le32(nova_crc32c(
+			NOVA_INIT_CSUM, strp_ptr + strp_size * 7, strp_size));
 
 		src_addr = crc;
 copy:
 		csum_addr = nova_get_data_csum_addr(sb, strp_nr, 0);
 		csum_addr1 = nova_get_data_csum_addr(sb, strp_nr, 1);
 
-		nova_memunlock_range(sb, csum_addr, NOVA_DATA_CSUM_LEN * 8, &irq_flags);
+		nova_memunlock_range(sb, csum_addr, NOVA_DATA_CSUM_LEN * 8,
+				     &irq_flags);
 		if (support_clwb) {
 			memcpy(csum_addr, src_addr, NOVA_DATA_CSUM_LEN * 8);
 			memcpy(csum_addr1, src_addr, NOVA_DATA_CSUM_LEN * 8);
 		} else {
 			memcpy_to_pmem_nocache(csum_addr, src_addr,
-						NOVA_DATA_CSUM_LEN * 8);
+					       NOVA_DATA_CSUM_LEN * 8);
 			memcpy_to_pmem_nocache(csum_addr1, src_addr,
-						NOVA_DATA_CSUM_LEN * 8);
+					       NOVA_DATA_CSUM_LEN * 8);
 		}
-		nova_memlock_range(sb, csum_addr, NOVA_DATA_CSUM_LEN * 8, &irq_flags);
+		nova_memlock_range(sb, csum_addr, NOVA_DATA_CSUM_LEN * 8,
+				   &irq_flags);
 		if (support_clwb) {
-			nova_flush_buffer(csum_addr,
-					  NOVA_DATA_CSUM_LEN * 8, 0);
-			nova_flush_buffer(csum_addr1,
-					  NOVA_DATA_CSUM_LEN * 8, 0);
+			nova_flush_buffer(csum_addr, NOVA_DATA_CSUM_LEN * 8, 0);
+			nova_flush_buffer(csum_addr1, NOVA_DATA_CSUM_LEN * 8,
+					  0);
 		}
 
 		strp_nr += 8;
@@ -611,10 +626,12 @@ copy:
 		csum_addr = nova_get_data_csum_addr(sb, strp_nr, 0);
 		csum_addr1 = nova_get_data_csum_addr(sb, strp_nr, 1);
 
-		nova_memunlock_range(sb, csum_addr, NOVA_DATA_CSUM_LEN, &irq_flags);
+		nova_memunlock_range(sb, csum_addr, NOVA_DATA_CSUM_LEN,
+				     &irq_flags);
 		memcpy_to_pmem_nocache(csum_addr, &csum, NOVA_DATA_CSUM_LEN);
 		memcpy_to_pmem_nocache(csum_addr1, &csum, NOVA_DATA_CSUM_LEN);
-		nova_memlock_range(sb, csum_addr, NOVA_DATA_CSUM_LEN, &irq_flags);
+		nova_memlock_range(sb, csum_addr, NOVA_DATA_CSUM_LEN,
+				   &irq_flags);
 
 		strp_nr += 1;
 		if (!zero)
@@ -641,8 +658,9 @@ copy:
  * zero:    if the user data is all zero
  */
 int nova_update_block_csum(struct super_block *sb,
-	struct nova_inode_info_header *sih, u8 *block, unsigned long blocknr,
-	size_t offset, size_t bytes, int zero)
+			   struct nova_inode_info_header *sih, u8 *block,
+			   unsigned long blocknr, size_t offset, size_t bytes,
+			   int zero)
 {
 	u8 *strp_ptr;
 	size_t blockoff;
@@ -676,8 +694,9 @@ int nova_update_block_csum(struct super_block *sb,
 }
 
 int nova_update_pgoff_csum(struct super_block *sb,
-	struct nova_inode_info_header *sih, struct nova_file_write_entry *entry,
-	unsigned long pgoff, int zero)
+			   struct nova_inode_info_header *sih,
+			   struct nova_file_write_entry *entry,
+			   unsigned long pgoff, int zero)
 {
 	void *dax_mem = NULL;
 	u64 blockoff;
@@ -714,8 +733,8 @@ int nova_update_pgoff_csum(struct super_block *sb,
  * return: true or false
  */
 bool nova_verify_data_csum(struct super_block *sb,
-	struct nova_inode_info_header *sih, unsigned long blocknr,
-	size_t offset, size_t bytes)
+			   struct nova_inode_info_header *sih,
+			   unsigned long blocknr, size_t offset, size_t bytes)
 {
 	void *blockptr, *strp_ptr;
 	size_t blockoff, blocksize = nova_inode_blk_size(sih);
@@ -736,8 +755,8 @@ bool nova_verify_data_csum(struct super_block *sb,
 	/* Only a whole stripe can be checksum verified.
 	 * strps: # of stripes to be checked since offset.
 	 */
-	strps = ((offset + bytes - 1) >> strp_shift)
-		- (offset >> strp_shift) + 1;
+	strps = ((offset + bytes - 1) >> strp_shift) - (offset >> strp_shift) +
+		1;
 
 	blockoff = nova_get_block_off(sb, blocknr, sih->i_blk_type);
 	blockptr = nova_get_block(sb, blockoff);
@@ -766,11 +785,11 @@ bool nova_verify_data_csum(struct super_block *sb,
 			error = -1;
 		if (error < 0) {
 			nova_dbg("%s: media error in data strip detected!\n",
-				__func__);
+				 __func__);
 			match = false;
 		} else {
-			csum_calc = nova_crc32c(NOVA_INIT_CSUM, strip,
-						strp_size);
+			csum_calc =
+				nova_crc32c(NOVA_INIT_CSUM, strip, strp_size);
 			match = (csum_calc == csum_nvmm0) ||
 				(csum_calc == csum_nvmm1);
 		}
@@ -784,24 +803,26 @@ bool nova_verify_data_csum(struct super_block *sb,
 			 *     at least one csum is corrupted, also need to run
 			 *     data recovery to see if one csum is still good
 			 */
-			nova_dbg("%s: nova data corruption detected! inode %lu, strp %lu of %lu, block offset %lu, stripe nr %lu, csum calc 0x%08x, csum nvmm 0x%08x, csum nvmm replica 0x%08x\n",
+			nova_dbg(
+				"%s: nova data corruption detected! inode %lu, strp %lu of %lu, block offset %lu, stripe nr %lu, csum calc 0x%08x, csum nvmm 0x%08x, csum nvmm replica 0x%08x\n",
 				__func__, sih->ino, strp, strps, blockoff,
 				strp_nr, csum_calc, csum_nvmm0, csum_nvmm1);
 
 			if (data_parity == 0) {
-				nova_dbg("%s: no data redundancy available, can not repair data corruption!\n",
-					 __func__);
+				nova_dbg(
+					"%s: no data redundancy available, can not repair data corruption!\n",
+					__func__);
 				break;
 			}
 
 			nova_dbg("%s: nova data recovery begins\n", __func__);
 
 			error = nova_restore_data(sb, blocknr, strp_index,
-					strip, error, csum_nvmm0, csum_nvmm1,
-					&csum_calc);
+						  strip, error, csum_nvmm0,
+						  csum_nvmm1, &csum_calc);
 			if (error) {
 				nova_dbg("%s: nova data recovery fails!\n",
-						__func__);
+					 __func__);
 				dump_stack();
 				break;
 			}
@@ -821,41 +842,42 @@ bool nova_verify_data_csum(struct super_block *sb,
 			/* Getting here, data is known good but one checksum is
 			 * considered corrupted.
 			 */
-			nova_dbg("%s: nova checksum corruption detected! inode %lu, strp %lu of %lu, block offset %lu, stripe nr %lu, csum calc 0x%08x, csum nvmm 0x%08x, csum nvmm replica 0x%08x\n",
+			nova_dbg(
+				"%s: nova checksum corruption detected! inode %lu, strp %lu of %lu, block offset %lu, stripe nr %lu, csum calc 0x%08x, csum nvmm 0x%08x, csum nvmm replica 0x%08x\n",
 				__func__, sih->ino, strp, strps, blockoff,
 				strp_nr, csum_calc, csum_nvmm0, csum_nvmm1);
 
-			nova_memunlock_range(sb, csum_addr0,
-							NOVA_DATA_CSUM_LEN, &irq_flags);
+			nova_memunlock_range(sb, csum_addr0, NOVA_DATA_CSUM_LEN,
+					     &irq_flags);
 			if (csum_nvmm0 != csum_calc) {
 				csum_nvmm0 = cpu_to_le32(csum_calc);
 				memcpy_to_pmem_nocache(csum_addr0, &csum_nvmm0,
-							NOVA_DATA_CSUM_LEN);
+						       NOVA_DATA_CSUM_LEN);
 			}
 
 			if (csum_nvmm1 != csum_calc) {
 				csum_nvmm1 = cpu_to_le32(csum_calc);
 				memcpy_to_pmem_nocache(csum_addr1, &csum_nvmm1,
-							NOVA_DATA_CSUM_LEN);
+						       NOVA_DATA_CSUM_LEN);
 			}
-			nova_memlock_range(sb, csum_addr0, NOVA_DATA_CSUM_LEN, &irq_flags);
+			nova_memlock_range(sb, csum_addr0, NOVA_DATA_CSUM_LEN,
+					   &irq_flags);
 
 			nova_dbg("%s: nova checksum corruption repaired!\n",
-								__func__);
+				 __func__);
 		}
 
 		/* Getting here, the data stripe and both checksum copies are
 		 * known good. Continue to the next stripe.
 		 */
-		strp_nr    += 1;
+		strp_nr += 1;
 		strp_index += 1;
-		strp_ptr   += strp_size;
+		strp_ptr += strp_size;
 		if (strp_index == (blocksize >> strp_shift)) {
 			blocknr += 1;
 			blockoff += blocksize;
 			strp_index = 0;
 		}
-
 	}
 
 	if (strip != NULL)
@@ -867,8 +889,8 @@ bool nova_verify_data_csum(struct super_block *sb,
 }
 
 int nova_update_truncated_block_csum(struct super_block *sb,
-	struct inode *inode, loff_t newsize) {
-
+				     struct inode *inode, loff_t newsize)
+{
 	struct nova_inode_info *si = NOVA_I(inode);
 	struct nova_inode_info_header *sih = &si->header;
 	unsigned long offset = newsize & (sb->s_blocksize - 1);
@@ -919,4 +941,3 @@ int nova_update_truncated_block_csum(struct super_block *sb,
 
 	return 0;
 }
-
