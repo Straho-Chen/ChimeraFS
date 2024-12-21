@@ -22,8 +22,6 @@
 #include "nova.h"
 #include "inode.h"
 
-#include <asm/tlb.h>
-
 int nova_get_vma_overlap_range(struct super_block *sb,
 			       struct nova_inode_info_header *sih,
 			       struct vm_area_struct *vma,
@@ -442,7 +440,9 @@ static int nova_set_vma_read(struct vm_area_struct *vma)
 	struct mm_struct *mm = vma->vm_mm;
 	unsigned long oldflags = vma->vm_flags;
 	unsigned long newflags;
-	struct mmu_gather tlb;
+	unsigned long addr;
+	spinlock_t *ptl;
+	pte_t *pte;
 
 	mmap_write_lock(mm);
 
@@ -453,10 +453,18 @@ static int nova_set_vma_read(struct vm_area_struct *vma)
 	nova_dbgv("Set vma %p read, start 0x%lx, end 0x%lx\n", vma,
 		  vma->vm_start, vma->vm_end);
 
-	tlb_gather_mmu(&tlb, vma->vm_mm);
-	change_protection(&tlb, vma, vma->vm_start, vma->vm_end,
-			  MM_CP_UFFD_WP_ALL);
-	tlb_finish_mmu(&tlb);
+	vm_flags_set(vma, newflags);
+
+	for (addr = vma->vm_start; addr < vma->vm_end; addr += PAGE_SIZE) {
+		pte = get_locked_pte(vma->vm_mm, addr, &ptl);
+		if (pte) {
+			set_pte(pte,
+				pte_wrprotect(*pte)); // Remove write permission
+			pte_unmap_unlock(pte, ptl);
+		}
+	}
+
+	flush_tlb_mm(vma->vm_mm);
 
 out:
 	mmap_write_unlock(mm);
