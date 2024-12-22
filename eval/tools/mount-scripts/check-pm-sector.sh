@@ -12,5 +12,5 @@ else
     echo "PM not init as sector"
     sudo ndctl disable-namespace namespace$dev_num.0
     sudo ndctl destroy-namespace namespace$dev_num.0 --force
-    sudo ndctl create-namespace --force --reconfig=namespace$dev_num.0 --mode=sector
+    sudo ndctl create-namespace --mode=sector
 fi

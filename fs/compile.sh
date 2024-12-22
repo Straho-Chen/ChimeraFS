@@ -2,10 +2,9 @@
 
 sudo -v
 
-timing=1
+timing=0
 
-# fs=(pmfs nova winefs odinfs)
-fs=(odinfs)
+fs=(pmfs nova winefs odinfs)
 
 # Work around, will fix
 sudo modprobe nova

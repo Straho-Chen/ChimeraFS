@@ -20,8 +20,8 @@ fio_config=$(mktemp)
 
 cat $ABS_PATH/global.fio >$fio_config
 
-# echo "time_based" >>$fio_config
-# echo "runtime=10s" >>$fio_config
+echo "time_based" >>$fio_config
+echo "runtime=30s" >>$fio_config
 echo "directory=$DIR" >>$fio_config
 
 echo "[tmp]" >>$fio_config

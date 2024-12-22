@@ -9,11 +9,9 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("ext4" "ext4-dax" "nova" "pmfs" "winefs" "odinfs" "odinfs-single-pm")
-FS=("odinfs-single-pm")
-FILE_SIZES=($((2 * 1024)))
-# NUM_JOBS=(1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16)
-NUM_JOBS=(1)
+FS=("ext4" "ext4-dax" "ext4-raid" "nova" "pmfs" "odinfs" "odinfs-single-pm" "winefs")
+FILE_SIZES=($((1 * 1024)))
+NUM_JOBS=(1 2 4 8 16 28 56)
 BLK_SIZES=($((4 * 1024)))
 
 ODINFS_DEL_THRDS=1
@@ -30,10 +28,10 @@ fi
 fpath="/mnt/pmem0/"
 
 for ((i = 1; i <= loop; i++)); do
-    for fsize in "${FILE_SIZES[@]}"; do
-        for bsz in "${BLK_SIZES[@]}"; do
-            for job in "${NUM_JOBS[@]}"; do
-                for fs in "${FS[@]}"; do
+    for fs in "${FS[@]}"; do
+        for fsize in "${FILE_SIZES[@]}"; do
+            for bsz in "${BLK_SIZES[@]}"; do
+                for job in "${NUM_JOBS[@]}"; do
 
                     if [[ "$fs" == odinfs* ]]; then
                         bash "$TOOLS_PATH"/mount.sh "$fs" "$ODINFS_DEL_THRDS"
