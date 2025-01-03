@@ -19,17 +19,17 @@ def parse_data(filename):
                         "filesz": int(filesz),
                         "blksz": int(blksz),
                         "numjobs": int(numjobs),
-                        "bandwidth": float(bandwidth)
+                        "bandwidth": float(bandwidth) / 1024
                     })
     
     return pd.DataFrame(data)
 
 # 读取数据
-filename = "./performance-comparison-table"  # 替换为您的文件路径
+filename = "./performance-comparison-table-compare"  # 替换为您的文件路径
 data = parse_data(filename)
 
 # 按操作类型分组
-ops_list = ["seq-write", "rnd-write", "seq-read", "rnd-read"]
+ops_list = ["write", "randwrite", "read", "randread"]
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))
 axs = axs.flatten()
 
@@ -37,7 +37,7 @@ axs = axs.flatten()
 for i, ops in enumerate(ops_list):
     ax = axs[i]
     subset = data[data["ops"] == ops]
-    
+
     for fs in subset["fs"].unique():
         fs_data = subset[subset["fs"] == fs]
         ax.plot(
@@ -49,7 +49,7 @@ for i, ops in enumerate(ops_list):
     
     ax.set_title(ops)
     ax.set_xlabel("Number of Threads")
-    ax.set_ylabel("Bandwidth (MiB/s)")
+    ax.set_ylabel("Bandwidth (GiB/s)")
     ax.legend()
     ax.grid(True)
 

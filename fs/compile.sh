@@ -2,6 +2,8 @@
 
 sudo -v
 
+echo 32 >/proc/sys/kernel/watchdog_thresh
+
 timing=0
 
 fs=(pmfs nova winefs odinfs)
