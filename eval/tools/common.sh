@@ -36,6 +36,9 @@ function filebench_attr_breakdown() {
 function clean_mnt_dir() {
     MNT_DIR=$1
     rm -rf "$MNT_DIR"/*
+}
+
+function drop_cache() {
     echo "Drop caches..."
     sync
     echo 1 | sudo tee /proc/sys/vm/drop_caches

@@ -60,9 +60,3 @@ cpus_allowed_policy=split
 #
 #filename=/mnt/pmem/somefile
 directory=/mnt/pmem1
-
-include ../numa/numa1.fio
-[libpmem-seqwrite]
-rw=write
-stonewall
-

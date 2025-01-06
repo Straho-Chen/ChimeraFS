@@ -48,12 +48,14 @@ if __name__ == "__main__":
         info= numa_mem_info(0)
         f.write(info)
         f.write(numa_0_cpus)
+        f.write("\n")
         f.close()
 
         f = open(os.path.join(NUMA_CONFIG_DIR, "numa1.fio"), "w")
         info= numa_mem_info(1)
         f.write(info)
         f.write(numa_1_cpus)
+        f.write("\n")
         f.close()
     else:
         print("Only one NUMA node is available.")

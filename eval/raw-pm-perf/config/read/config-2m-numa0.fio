@@ -60,8 +60,3 @@ cpus_allowed_policy=split
 #
 #filename=/mnt/pmem/somefile
 directory=/mnt/pmem0
-
-include ../numa/numa0.fio
-[libpmem-seqread]
-rw=read
-stonewall
