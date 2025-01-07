@@ -4,9 +4,10 @@ sudo -v
 
 echo 32 >/proc/sys/kernel/watchdog_thresh
 
-timing=0
+timing=1
 
-fs=(pmfs nova winefs odinfs)
+# fs=(pmfs nova winefs odinfs)
+fs=(pmfs odinfs)
 
 # Work around, will fix
 sudo modprobe nova

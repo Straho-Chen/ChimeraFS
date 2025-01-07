@@ -5,6 +5,7 @@
 # submit bigger batches of I/O at the time. If it is set to 0 the iodepth value
 # will be used.
 iodepth_batch=1
+iodepth=1
 
 # Invalidate the buffer/page cache parts of the files to be used prior to starting
 # I/O if the platform and file type support it. Defaults to true. This will be
@@ -14,7 +15,7 @@ invalidate=1
 # depends on direct option, flags are set for pmem_memcpy() call:
 # direct=1 - PMEM_F_MEM_NONTEMPORAL,
 # direct=0 - PMEM_F_MEM_TEMPORAL.
-direct=1
+direct=0
 
 # If writing to a file, fio can verify the file contents after each iteration of
 # the job. Each verification method also implies verification of special header,
