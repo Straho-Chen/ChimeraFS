@@ -1,10 +1,13 @@
-file_system test_mode numa_node rw bandwidth(MiB/s)
-EXT4-DAX rr 0 r 23552
-EXT4-DAX rr 1 r 23244.8
-EXT4-DAX rr total rr 46796.8
-EXT4-DAX rw 0 r 23552
-EXT4-DAX rw 1 w 5594
-EXT4-DAX rw total rw 29146
-EXT4-DAX ww 0 w 5571
-EXT4-DAX ww 1 w 5587
-EXT4-DAX ww total ww 11158
+file_system test_mode numa_node bandwidth(MiB/s)
+EXT4-DAX all-read 0 26419.2
+EXT4-DAX all-read 1 24473.6
+EXT4-DAX all-read total 50892.8
+EXT4-DAX all-randread 0 26214.4
+EXT4-DAX all-randread 1 26112
+EXT4-DAX all-randread total 52326.4
+EXT4-DAX all-write 0 5460
+EXT4-DAX all-write 1 5523
+EXT4-DAX all-write total 10983
+EXT4-DAX all-randwrite 0 5462
+EXT4-DAX all-randwrite 1 5509
+EXT4-DAX all-randwrite total 10971
