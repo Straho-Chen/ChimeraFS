@@ -19,6 +19,7 @@
 #include <linux/compat.h>
 #include <linux/mount.h>
 #include "nova.h"
+#include "inode.h"
 
 long nova_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
@@ -77,7 +78,7 @@ long nova_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		epoch_id = nova_get_epoch_id(sb);
 		flags = flags & FS_FL_USER_MODIFIABLE;
 		flags |= oldflags & ~FS_FL_USER_MODIFIABLE;
-		inode->__i_ctime = current_time(inode);
+		inode_set_ctime_current(inode);
 		nova_set_inode_flags(inode, pi, flags);
 		sih->i_flags = flags;
 
@@ -117,7 +118,7 @@ flags_out:
 
 		epoch_id = nova_get_epoch_id(sb);
 		inode_lock(inode);
-		inode->__i_ctime = current_time(inode);
+		inode_set_ctime_current(inode);
 		inode->i_generation = generation;
 
 		update.tail = 0;

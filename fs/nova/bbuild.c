@@ -28,10 +28,11 @@
 #include <linux/slab.h>
 #include <linux/random.h>
 #include <linux/delay.h>
-#include <linux/signal.h>
-#include <linux/kernel.h>
 #include "nova.h"
 #include "journal.h"
+#include "super.h"
+#include "inode.h"
+#include "log.h"
 
 void nova_init_header(struct super_block *sb,
 		      struct nova_inode_info_header *sih, u16 i_mode)
@@ -203,6 +204,8 @@ static int nova_init_blockmap_from_inode(struct super_block *sb)
 	u64 curr_p;
 	u64 cpuid;
 	int ret = 0;
+
+	memset(&sih, 0, sizeof(struct nova_inode_info_header));
 
 	/* FIXME: Backup inode for BLOCKNODE */
 	ret = nova_get_head_tail(sb, pi, &sih);

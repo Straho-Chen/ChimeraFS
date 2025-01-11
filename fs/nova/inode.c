@@ -24,6 +24,7 @@
 #include <linux/types.h>
 #include <linux/ratelimit.h>
 #include "nova.h"
+#include "inode.h"
 
 unsigned int blk_type_to_shift[NOVA_BLOCK_TYPE_MAX] = { 12, 21, 30 };
 uint32_t blk_type_to_size[NOVA_BLOCK_TYPE_MAX] = { 0x1000, 0x200000,
@@ -405,7 +406,7 @@ static void nova_truncate_file_blocks(struct inode *inode, loff_t start,
 	unsigned long first_blocknr, last_blocknr;
 	int freed = 0;
 
-	inode->i_mtime = inode->__i_ctime = current_time(inode);
+	inode->i_mtime = inode_set_ctime_current(inode);
 
 	nova_dbg_verbose("truncate: pi %p iblocks %lx %llx %llx %llx\n", pi,
 			 sih->i_blocks, start, end, pi->i_size);
@@ -413,8 +414,9 @@ static void nova_truncate_file_blocks(struct inode *inode, loff_t start,
 	first_blocknr = (start + (1UL << data_bits) - 1) >> data_bits;
 
 	if (end == 0)
-		return;
-	last_blocknr = (end - 1) >> data_bits;
+		last_blocknr = 0;
+	else
+		last_blocknr = (end - 1) >> data_bits;
 
 	if (first_blocknr > last_blocknr)
 		return;
@@ -545,10 +547,9 @@ static int nova_read_inode(struct super_block *sb, struct inode *inode,
 	/* Update size and time after rebuild the tree */
 	inode->i_size = le64_to_cpu(sih->i_size);
 	inode->i_atime.tv_sec = (__s32)le32_to_cpu(pi->i_atime);
-	inode->__i_ctime.tv_sec = (__s32)le32_to_cpu(pi->i_ctime);
-	inode->i_mtime.tv_sec = (__s32)le32_to_cpu(pi->i_mtime);
-	inode->i_atime.tv_nsec = inode->i_mtime.tv_nsec =
-		inode->__i_ctime.tv_nsec = 0;
+	inode_set_atime(inode, (__s32)le32_to_cpu(pi->i_atime), 0);
+	inode_set_ctime(inode, (__s32)le32_to_cpu(pi->i_ctime), 0);
+	inode_set_mtime(inode, (__s32)le32_to_cpu(pi->i_mtime), 0);
 	set_nlink(inode, le16_to_cpu(pi->i_links_count));
 	return 0;
 
@@ -586,7 +587,7 @@ static void nova_init_inode(struct inode *inode, struct nova_inode *pi)
 	pi->i_links_count = cpu_to_le16(inode->i_nlink);
 	pi->i_size = cpu_to_le64(inode->i_size);
 	pi->i_atime = cpu_to_le32(inode->i_atime.tv_sec);
-	pi->i_ctime = cpu_to_le32(inode->__i_ctime.tv_sec);
+	pi->i_ctime = cpu_to_le32(inode_get_ctime_sec(inode));
 	pi->i_mtime = cpu_to_le32(inode->i_mtime.tv_sec);
 	pi->i_generation = cpu_to_le32(inode->i_generation);
 	pi->log_head = 0;
@@ -954,7 +955,7 @@ void nova_evict_inode(struct inode *inode)
 		destroy = 1;
 		pi = NULL; /* we no longer own the nova_inode */
 
-		inode->i_mtime = inode->__i_ctime = current_time(inode);
+		inode->i_mtime = inode_set_ctime_current(inode);
 		inode->i_size = 0;
 	}
 out:
@@ -1079,8 +1080,7 @@ struct inode *nova_new_vfs_inode(struct mnt_idmap *idmap,
 
 	inode_init_owner(idmap, inode, dir, mode);
 	inode->i_blocks = inode->i_size = 0;
-	inode->i_mtime = inode->i_atime = inode->__i_ctime =
-		current_time(inode);
+	inode->i_mtime = inode->i_atime = inode_set_ctime_current(inode);
 
 	inode->i_generation = atomic_add_return(1, &sbi->next_generation);
 	inode->i_size = size;
@@ -1444,9 +1444,8 @@ unsigned long nova_find_region(struct inode *inode, loff_t *offset, int hole)
 static int nova_writepages(struct address_space *mapping,
 			   struct writeback_control *wbc)
 {
-	struct nova_sb_info *sbi = NOVA_SB(mapping->host->i_sb);
 	int ret;
-
+	struct nova_sb_info *sbi = NOVA_SB(mapping->host->i_sb);
 	INIT_TIMING(wp_time);
 
 	NOVA_START_TIMING(write_pages_t, wp_time);

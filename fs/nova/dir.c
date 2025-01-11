@@ -18,6 +18,7 @@
 #include <linux/fs.h>
 #include <linux/pagemap.h>
 #include "nova.h"
+#include "inode.h"
 
 #define DT2IF(dt) (((dt) << 12) & S_IFMT)
 #define IF2DT(sif) (((sif)&S_IFMT) >> 12)
@@ -60,6 +61,7 @@ int nova_insert_dir_tree(struct super_block *sb,
 
 	node->hash = hash;
 	node->direntry = direntry;
+	nova_update_range_node_checksum(node); /* update checksum */
 	ret = nova_insert_range_node(&sih->rb_tree, node, NODE_DIR);
 	if (ret) {
 		nova_free_dir_node(node);
@@ -171,9 +173,6 @@ static unsigned int nova_init_dentry(struct super_block *sb,
 	de_entry->ino = cpu_to_le64(self_ino);
 	de_entry->name_len = 1;
 	de_entry->de_len = cpu_to_le16(de_len);
-	/* ktime_get_coarse_real_ts64(&now); */
-	/* de_entry->mtime = timespec64_trunc(now, */
-	/* 				 sb->s_time_gran).tv_sec; */
 	ktime_get_coarse_real_ts64(&now);
 	de_entry->mtime = now.tv_sec;
 
@@ -192,9 +191,6 @@ static unsigned int nova_init_dentry(struct super_block *sb,
 	de_entry->ino = cpu_to_le64(parent_ino);
 	de_entry->name_len = 2;
 	de_entry->de_len = cpu_to_le16(de_len);
-	/* ktime_get_coarse_real_ts64(&now); */
-	/* de_entry->mtime = timespec64_trunc(now, */
-	/* 				 sb->s_time_gran).tv_sec; */
 	ktime_get_coarse_real_ts64(&now);
 	de_entry->mtime = now.tv_sec;
 
@@ -320,7 +316,7 @@ int nova_add_dentry(struct dentry *dentry, u64 ino, int inc_link,
 	 * completion of syscall, but too many callers depend
 	 * on this.
 	 */
-	dir->i_mtime = dir->__i_ctime = current_time(dir);
+	dir->i_mtime = inode_set_ctime_current(dir);
 
 	loglen = NOVA_DIR_LOG_REC_LEN(namelen);
 	ret = nova_append_dentry(sb, pidir, dir, dentry, ino, loglen, update,
@@ -382,7 +378,8 @@ static int nova_inplace_update_dentry(struct super_block *sb, struct inode *dir,
  * already been logged for consistency
  */
 int nova_remove_dentry(struct dentry *dentry, int dec_link,
-		       struct nova_inode_update *update, u64 epoch_id)
+		       struct nova_inode_update *update, u64 epoch_id,
+		       bool rename)
 {
 	struct inode *dir = dentry->d_parent->d_inode;
 	struct super_block *sb = dir->i_sb;
@@ -415,9 +412,10 @@ int nova_remove_dentry(struct dentry *dentry, int dec_link,
 
 	pidir = nova_get_inode(sb, dir);
 
-	dir->i_mtime = dir->__i_ctime = current_time(dir);
+	dir->i_mtime = inode_set_ctime_current(dir);
 
-	if (nova_can_inplace_update_dentry(sb, old_dentry, epoch_id)) {
+	if (!rename &&
+	    nova_can_inplace_update_dentry(sb, old_dentry, epoch_id)) {
 		nova_inplace_update_dentry(sb, dir, old_dentry, dec_link,
 					   epoch_id);
 		curr_entry = nova_get_addr_off(sbi, old_dentry);

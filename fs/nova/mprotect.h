@@ -24,10 +24,8 @@
 #include <linux/fs.h>
 #include "nova_def.h"
 #include "super.h"
-#include "stats.h"
 
-extern void nova_err(struct super_block *sb, const char *fmt, ...);
-extern void *nova_get_block(struct super_block *sb, u64 block);
+extern void nova_error_mng(struct super_block *sb, const char *fmt, ...);
 
 static inline int nova_range_check(struct super_block *sb, void *p,
 				   unsigned long len)

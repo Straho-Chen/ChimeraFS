@@ -1,23 +1,16 @@
-config SLFS
-    tristate "Single Level File System support"
-    select DEV_DAX_PMEM
-    help
-     This is a file system for non-volatile memory. It use a single level design and use a little memory.
+config PARFS
+	tristate "PARFS: parallel log-structured file system for non-volatile memories"
+	depends on FS_DAX
+	depends on LIBNVDIMM
+	select CRC32
+	select LIBCRC32C
+	help
+	  If your system has a block of fast (comparable in access speed to
+	  system memory) and non-volatile byte-addressable memory and you wish
+	  to mount a light-weight filesystem with strong consistency support
+	  over it, say Y here.
 
-config SLFS_XIP
-    bool "Execute-in-place in SLFS"
-    depends on SLFS
-    help
-     Say Y here to enable XIP feature of SLFS.
+	  To compile this as a module, choose M here: the module will be
+	  called nova.
 
-config SLFS_DEBUG
-    bool "SLFS debug log support"
-    depends on SLFS
-    help
-     Enables run-time debug log support for the SLFS filesystem.
-    
-config SLFS_TRACE
-    bool "SLFS trace support"
-    depends on SLFS
-    help
-     Enables run-time trace log support for the SLFS filesystem.
+	  If unsure, say N.

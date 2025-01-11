@@ -6,11 +6,9 @@ echo 32 >/proc/sys/kernel/watchdog_thresh
 
 timing=1
 
-fs=(pmfs nova winefs odinfs)
+fs=(pmfs nova winefs odinfs parfs)
 
 # Work around, will fix
-sudo modprobe nova
-sudo rmmod nova
 sudo rm -rf /dev/pmem_ar*
 
 for i in ${fs[@]}; do

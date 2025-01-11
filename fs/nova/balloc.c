@@ -26,6 +26,7 @@
 #include <linux/fs.h>
 #include <linux/bitops.h>
 #include "nova.h"
+#include "inode.h"
 
 int nova_alloc_block_free_lists(struct super_block *sb)
 {
@@ -578,7 +579,7 @@ struct nova_range_node *nova_alloc_blocknode_atomic(struct super_block *sb)
 
 #define PAGES_PER_2MB 512
 #define PAGES_PER_2MB_MASK (512 - 1)
-#define IS_DATABLOCKS_2MB_ALIGNED(numblocks, atype) \
+#define IS_DATABLOCKS_2MB_ALIGNED(num_blocks, atype) \
 	(!(num_blocks & PAGES_PER_2MB_MASK) && (atype == DATA))
 
 /* This method returns the number of blocks allocated. */
@@ -950,18 +951,11 @@ alloc:
 	}
 
 	if (zero) {
-		long i = 0;
 		bp = nova_get_block(sb,
 				    nova_get_block_off(sb, new_blocknr, btype));
 		nova_memunlock_range(sb, bp, PAGE_SIZE * ret_blocks,
 				     &irq_flags);
-		for (i = 0; i < ret_blocks; i++) {
-			memset_nt(bp + i * PAGE_SIZE, 0, PAGE_SIZE);
-
-			if (need_resched()) {
-				cond_resched();
-			}
-		}
+		memset_nt(bp, 0, PAGE_SIZE * ret_blocks);
 		nova_memlock_range(sb, bp, PAGE_SIZE * ret_blocks, &irq_flags);
 	}
 	*blocknr = new_blocknr;

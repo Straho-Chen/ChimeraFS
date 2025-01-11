@@ -40,6 +40,8 @@
 #include <linux/dax.h>
 #include "nova.h"
 #include "journal.h"
+#include "super.h"
+#include "inode.h"
 
 int measure_timing;
 int metadata_csum;
@@ -119,15 +121,6 @@ static int nova_get_nvmm_info(struct super_block *sb, struct nova_sb_info *sbi)
 	pfn_t __pfn_t;
 	long size;
 	struct dax_device *dax_dev;
-	int ret;
-
-	// ret = bdev_dax_supported(sb->s_bdev, PAGE_SIZE);
-	// nova_dbg_verbose("%s: dax_supported = %d; bdev->super=0x%p",
-	// 		 __func__, ret, sb->s_bdev->bd_super);
-	// if (!ret) {
-	// 	nova_err(sb, "device does not support DAX\n");
-	// 	return -EINVAL;
-	// }
 
 	sbi->s_bdev = sb->s_bdev;
 
@@ -520,10 +513,9 @@ static void nova_root_check(struct super_block *sb, struct nova_inode *root_pi)
 static int nova_check_super(struct super_block *sb, struct nova_super_block *ps)
 {
 	struct nova_sb_info *sbi = NOVA_SB(sb);
-	int rc = 0;
+	int rc;
 
-	if (memcpy(sbi->nova_sb, ps, sizeof(struct nova_super_block)) == NULL)
-		rc = -1;
+	rc = memcpy_mcsafe(sbi->nova_sb, ps, sizeof(struct nova_super_block));
 
 	if (rc < 0)
 		return rc;
@@ -1144,7 +1136,7 @@ static struct dentry *nova_mount(struct file_system_type *fs_type, int flags,
 
 static struct file_system_type nova_fs_type = {
 	.owner = THIS_MODULE,
-	.name = "NOVA",
+	.name = "nova",
 	.mount = nova_mount,
 	.kill_sb = kill_block_super,
 };

@@ -21,6 +21,7 @@
 #include <linux/falloc.h>
 #include <asm/mman.h>
 #include "nova.h"
+#include "inode.h"
 
 static inline int nova_can_set_blocksize_hint(struct inode *inode,
 					      struct nova_inode *pi,
@@ -229,8 +230,8 @@ static long nova_fallocate(struct file *file, int mode, loff_t offset,
 		goto out;
 	}
 
-	inode->i_mtime = inode->__i_ctime = current_time(inode);
-	time = current_time(inode).tv_sec;
+	inode->i_mtime = inode_set_ctime_current(inode);
+	time = inode->i_mtime.tv_sec;
 
 	blocksize_mask = sb->s_blocksize - 1;
 	start_blk = offset >> sb->s_blocksize_bits;
@@ -325,7 +326,7 @@ next:
 			goto out;
 	}
 
-	nova_dbgv("blocks: %llu, %lu\n", inode->i_blocks, sih->i_blocks);
+	nova_dbgv("blocks: %lu, %lu\n", inode->i_blocks, sih->i_blocks);
 
 	if (ret || (mode & FALLOC_FL_KEEP_SIZE)) {
 		nova_memunlock_inode(sb, pi, &irq_flags);
@@ -359,7 +360,8 @@ static int nova_iomap_begin_nolock(struct inode *inode, loff_t offset,
 				   loff_t length, unsigned int flags,
 				   struct iomap *iomap, struct iomap *srcmap)
 {
-	return nova_iomap_begin(inode, offset, length, flags, iomap, false);
+	return nova_iomap_begin(inode, offset, length, flags, iomap, srcmap,
+				false);
 }
 
 static struct iomap_ops nova_iomap_ops_nolock = {
@@ -501,9 +503,6 @@ static ssize_t do_dax_mapping_read(struct file *filp, char __user *buf,
 		unsigned long nr, left;
 		unsigned long nvmm;
 		void *dax_mem = NULL;
-		void *dax_mem_iter;
-		char *buf_iter;
-		size_t remain;
 		int zero = 0;
 
 		/* nr is the maximum number of bytes to copy from this page */
@@ -572,53 +571,25 @@ memcpy:
 skip_verify:
 		NOVA_START_TIMING(memcpy_r_nvmm_t, memcpy_time);
 
-		dax_mem_iter = dax_mem + offset;
-		buf_iter = (char *)buf + copied;
-		remain = nr;
-
-		while (remain > 0) {
-			size_t to_copy = NOVA_MEMCPY_CHUNK_SIZE;
-			size_t chunk_offset;
-
-			chunk_offset = ((unsigned long)dax_mem_iter) &
-				       (to_copy - 1);
-
-			to_copy -= chunk_offset;
-
-			if (to_copy > remain) {
-				to_copy = remain;
-			}
-
-			if (!zero) {
-				left = __copy_to_user(buf_iter, dax_mem_iter,
-						      to_copy);
-			} else {
-				left = __clear_user(buf_iter, to_copy);
-			}
-
-			if (left) {
-				nova_dbg("%s ERROR!: bytes %lu, left %lu\n",
-					 __func__, remain, left);
-				error = -EFAULT;
-				goto out;
-			}
-
-			dax_mem_iter += to_copy;
-			buf_iter += to_copy;
-			remain -= to_copy;
-
-			if (need_resched()) {
-				cond_resched();
-			}
-		}
+		if (!zero)
+			left = __copy_to_user(buf + copied, dax_mem + offset,
+					      nr);
+		else
+			left = __clear_user(buf + copied, nr);
 
 		NOVA_END_TIMING(memcpy_r_nvmm_t, memcpy_time);
+
+		if (left) {
+			nova_dbg("%s ERROR!: bytes %lu, left %lu\n", __func__,
+				 nr, left);
+			error = -EFAULT;
+			goto out;
+		}
 
 		copied += (nr - left);
 		offset += (nr - left);
 		index += offset >> PAGE_SHIFT;
 		offset &= ~PAGE_MASK;
-
 	} while (copied < len);
 
 out:
@@ -737,8 +708,8 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 	if (ret)
 		goto out;
 
-	inode->__i_ctime = inode->i_mtime = current_time(inode);
-	time = current_time(inode).tv_sec;
+	inode->i_mtime = inode_set_ctime_current(inode);
+	time = inode->i_mtime.tv_sec;
 
 	nova_dbgv("%s: inode %lu, offset %lld, count %lu\n", __func__,
 		  inode->i_ino, pos, count);
@@ -851,7 +822,7 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 
 	ret = written;
 	NOVA_STATS_ADD(cow_write_breaks, step);
-	nova_dbgv("blocks: %llu, %lu\n", inode->i_blocks, sih->i_blocks);
+	nova_dbgv("blocks: %lu, %lu\n", inode->i_blocks, sih->i_blocks);
 
 	*ppos = pos;
 	if (pos > inode->i_size) {
@@ -973,7 +944,7 @@ static ssize_t nova_wrap_rw_iter(struct kiocb *iocb, struct iov_iter *iter)
 	ssize_t written = 0;
 	unsigned long seg;
 	unsigned long nr_segs = iter->nr_segs;
-	const struct iovec *iv = iter->__iov;
+	const struct iovec *iv;
 	INIT_TIMING(wrap_iter_time);
 
 	NOVA_START_TIMING(wrap_iter_t, wrap_iter_time);
@@ -988,7 +959,7 @@ static ssize_t nova_wrap_rw_iter(struct kiocb *iocb, struct iov_iter *iter)
 		inode_lock_shared(inode);
 	}
 
-	iv = iter->__iov;
+	iv = iter_iov(iter);
 	for (seg = 0; seg < nr_segs; seg++) {
 		if (iov_iter_rw(iter) == READ) {
 			ret = do_dax_mapping_read(filp, iv->iov_base,
