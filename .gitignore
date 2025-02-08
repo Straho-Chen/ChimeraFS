@@ -13,3 +13,5 @@ build/
 Module.symvers
 modules.order
 *.log
+
+.vscode/

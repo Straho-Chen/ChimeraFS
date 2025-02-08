@@ -12,7 +12,7 @@ TOOLS_PATH=$ABS_PATH/../tools
 FS=("ext4" "ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 ODINFS=("odinfs" "odinfs-single-pm")
 FILE_SIZES=($((1 * 1024)))
-NUM_JOBS=(1 2 4 8 16 28 32 48)
+NUM_JOBS=(1 2 4 8 16 28 32 48 56 64)
 BLK_SIZES=($((4 * 1024)))
 
 ODINFS_DEL_THRDS=(1 2 4 8 12)

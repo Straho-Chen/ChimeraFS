@@ -4,6 +4,8 @@ sudo -v
 
 echo 32 >/proc/sys/kernel/watchdog_thresh
 
+echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
+
 timing=1
 
 fs=(pmfs nova winefs odinfs parfs)
