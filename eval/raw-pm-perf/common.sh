@@ -24,7 +24,7 @@ function gen_config() {
         exit 1
     fi
     cat $config_dir/numa/$numa.fio >>$fio_config
-    cat "numjobs=$numjobs" >>$fio_config
+    echo "numjobs=$numjobs" >>$fio_config
     echo "[libpmem]" >>$fio_config
     echo $fio_config
 }
