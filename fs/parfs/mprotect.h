@@ -25,8 +25,6 @@
 #include "nova_def.h"
 #include "super.h"
 
-extern void nova_error_mng(struct super_block *sb, const char *fmt, ...);
-
 static inline int nova_range_check(struct super_block *sb, void *p,
 				   unsigned long len)
 {

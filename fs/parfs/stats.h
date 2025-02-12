@@ -23,6 +23,8 @@
 
 #include <linux/time.h>
 
+extern int measure_timing;
+
 /* ======================= Timing ========================= */
 enum timing_category {
 	/* Init */
@@ -163,6 +165,29 @@ enum timing_category {
 	delete_snapshot_t,
 	append_snapshot_file_t,
 	append_snapshot_inode_t,
+
+	/* Delegation */
+	delegation_title_t,
+	do_delegation_r_t,
+	pre_fault_r_t,
+	send_request_r_t,
+	ring_buffer_enque_r_t,
+	fini_delegation_r_t,
+
+	do_delegation_w_t,
+	pre_fault_w_t,
+	send_request_w_t,
+	ring_buffer_enque_w_t,
+	fini_delegation_w_t,
+
+	/* IO Agent */
+	agent_title_t,
+	agent_receive_request_t,
+	agent_addr_trans_r_t,
+	agent_memcpy_r_t,
+
+	agent_addr_trans_w_t,
+	agent_memcpy_w_t,
 
 	/* Sentinel */
 	TIMING_NUM,

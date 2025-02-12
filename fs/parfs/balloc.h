@@ -10,8 +10,6 @@ struct free_list {
 	struct nova_range_node *first_node; // lowest address free range
 	struct nova_range_node *last_node; // highest address free range
 
-	int index; // Which CPU do I belong to?
-
 	/* Where are the data checksum blocks */
 	unsigned long csum_start;
 	unsigned long replica_csum_start;
@@ -49,11 +47,11 @@ struct free_list {
 };
 
 static inline struct free_list *nova_get_free_list(struct super_block *sb,
-						   int cpu)
+						   int cpu, int socket)
 {
 	struct nova_sb_info *sbi = NOVA_SB(sb);
 
-	return &sbi->free_lists[cpu];
+	return &sbi->free_lists[cpu * sbi->sockets + socket];
 }
 
 enum nova_alloc_direction { ALLOC_FROM_HEAD = 0, ALLOC_FROM_TAIL = 1 };

@@ -93,7 +93,7 @@ static int nova_seq_IO_show(struct seq_file *seq, void *v)
 	unsigned long freed_log_pages = 0;
 	unsigned long free_data_count = 0;
 	unsigned long freed_data_pages = 0;
-	int i;
+	int i, j;
 
 	nova_get_timing_stats();
 	nova_get_IO_stats();
@@ -101,16 +101,18 @@ static int nova_seq_IO_show(struct seq_file *seq, void *v)
 	seq_puts(seq, "============ NOVA allocation stats ============\n\n");
 
 	for (i = 0; i < sbi->cpus; i++) {
-		free_list = nova_get_free_list(sb, i);
+		for (j = 0; j < sbi->sockets; j++) {
+			free_list = nova_get_free_list(sb, i, j);
 
-		alloc_log_count += free_list->alloc_log_count;
-		alloc_log_pages += free_list->alloc_log_pages;
-		alloc_data_count += free_list->alloc_data_count;
-		alloc_data_pages += free_list->alloc_data_pages;
-		free_log_count += free_list->free_log_count;
-		freed_log_pages += free_list->freed_log_pages;
-		free_data_count += free_list->free_data_count;
-		freed_data_pages += free_list->freed_data_pages;
+			alloc_log_count += free_list->alloc_log_count;
+			alloc_log_pages += free_list->alloc_log_pages;
+			alloc_data_count += free_list->alloc_data_count;
+			alloc_data_pages += free_list->alloc_data_pages;
+			free_log_count += free_list->free_log_count;
+			freed_log_pages += free_list->freed_log_pages;
+			free_data_count += free_list->free_data_count;
+			freed_data_pages += free_list->freed_data_pages;
+		}
 	}
 
 	seq_printf(seq,
@@ -215,53 +217,63 @@ static int nova_seq_show_allocator(struct seq_file *seq, void *v)
 	struct super_block *sb = seq->private;
 	struct nova_sb_info *sbi = NOVA_SB(sb);
 	struct free_list *free_list;
-	int i;
+	int i, j;
 	unsigned long log_pages = 0;
 	unsigned long data_pages = 0;
 
-	seq_puts(seq, "======== NOVA per-CPU allocator stats ========\n");
+	seq_puts(seq,
+		 "======== NOVA per-CPU/per-socket allocator stats ========\n");
 	for (i = 0; i < sbi->cpus; i++) {
-		free_list = nova_get_free_list(sb, i);
-		seq_printf(
-			seq,
-			"Free list %d: block start %lu, block end %lu, num_blocks %lu, num_free_blocks %lu, blocknode %lu\n",
-			i, free_list->block_start, free_list->block_end,
-			free_list->block_end - free_list->block_start + 1,
-			free_list->num_free_blocks, free_list->num_blocknode);
+		for (j = 0; j < sbi->sockets; j++) {
+			free_list = nova_get_free_list(sb, i, j);
+			seq_printf(
+				seq,
+				"Free list %d: block start %lu, block end %lu, num_blocks %lu, num_free_blocks %lu, blocknode %lu\n",
+				i, free_list->block_start, free_list->block_end,
+				free_list->block_end - free_list->block_start +
+					1,
+				free_list->num_free_blocks,
+				free_list->num_blocknode);
 
-		if (free_list->first_node) {
-			seq_printf(seq, "First node %lu - %lu\n",
-				   free_list->first_node->range_low,
-				   free_list->first_node->range_high);
+			if (free_list->first_node) {
+				seq_printf(seq, "First node %lu - %lu\n",
+					   free_list->first_node->range_low,
+					   free_list->first_node->range_high);
+			}
+
+			if (free_list->last_node) {
+				seq_printf(seq, "Last node %lu - %lu\n",
+					   free_list->last_node->range_low,
+					   free_list->last_node->range_high);
+			}
+
+			seq_printf(
+				seq,
+				"Free list %d: csum start %lu, replica csum start %lu, csum blocks %lu, parity start %lu, parity blocks %lu\n",
+				i, free_list->csum_start,
+				free_list->replica_csum_start,
+				free_list->num_csum_blocks,
+				free_list->parity_start,
+				free_list->num_parity_blocks);
+
+			seq_printf(
+				seq,
+				"Free list %d: alloc log count %lu, allocated log pages %lu, alloc data count %lu, allocated data pages %lu, free log count %lu, freed log pages %lu, free data count %lu, freed data pages %lu\n",
+				i, free_list->alloc_log_count,
+				free_list->alloc_log_pages,
+				free_list->alloc_data_count,
+				free_list->alloc_data_pages,
+				free_list->free_log_count,
+				free_list->freed_log_pages,
+				free_list->free_data_count,
+				free_list->freed_data_pages);
+
+			log_pages += free_list->alloc_log_pages;
+			log_pages -= free_list->freed_log_pages;
+
+			data_pages += free_list->alloc_data_pages;
+			data_pages -= free_list->freed_data_pages;
 		}
-
-		if (free_list->last_node) {
-			seq_printf(seq, "Last node %lu - %lu\n",
-				   free_list->last_node->range_low,
-				   free_list->last_node->range_high);
-		}
-
-		seq_printf(
-			seq,
-			"Free list %d: csum start %lu, replica csum start %lu, csum blocks %lu, parity start %lu, parity blocks %lu\n",
-			i, free_list->csum_start, free_list->replica_csum_start,
-			free_list->num_csum_blocks, free_list->parity_start,
-			free_list->num_parity_blocks);
-
-		seq_printf(
-			seq,
-			"Free list %d: alloc log count %lu, allocated log pages %lu, alloc data count %lu, allocated data pages %lu, free log count %lu, freed log pages %lu, free data count %lu, freed data pages %lu\n",
-			i, free_list->alloc_log_count,
-			free_list->alloc_log_pages, free_list->alloc_data_count,
-			free_list->alloc_data_pages, free_list->free_log_count,
-			free_list->freed_log_pages, free_list->free_data_count,
-			free_list->freed_data_pages);
-
-		log_pages += free_list->alloc_log_pages;
-		log_pages -= free_list->freed_log_pages;
-
-		data_pages += free_list->alloc_data_pages;
-		data_pages -= free_list->freed_data_pages;
 	}
 
 	seq_printf(seq, "\nCurrently used pmem pages: log %lu, data %lu\n",
@@ -508,8 +520,7 @@ void nova_sysfs_init(struct super_block *sb)
 	struct nova_sb_info *sbi = NOVA_SB(sb);
 
 	if (nova_proc_root)
-		sbi->s_proc = proc_mkdir(sbi->s_bdev->bd_disk->disk_name,
-					 nova_proc_root);
+		sbi->s_proc = proc_mkdir(PMEM_DEV_NAME, nova_proc_root);
 
 	if (sbi->s_proc) {
 		proc_create_data("timing_stats", 0444, sbi->s_proc,
@@ -544,7 +555,6 @@ void nova_sysfs_exit(struct super_block *sb)
 		remove_proc_entry("snapshots", sbi->s_proc);
 		remove_proc_entry("test_perf", sbi->s_proc);
 		remove_proc_entry("gc", sbi->s_proc);
-		remove_proc_entry(sbi->s_bdev->bd_disk->disk_name,
-				  nova_proc_root);
+		remove_proc_entry(PMEM_DEV_NAME, nova_proc_root);
 	}
 }

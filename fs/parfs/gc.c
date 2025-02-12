@@ -367,6 +367,7 @@ nova_inode_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 			/* Copy entry to the new log */
 			nova_memunlock_block(sb, nova_get_block(sb, new_curr),
 					     &irq_flags);
+			/* length seem to be short(like the data struct size). We keep the memcpy here. */
 			memcpy_to_pmem_nocache(nova_get_block(sb, new_curr),
 					       nova_get_block(sb, curr_p),
 					       length);
@@ -478,6 +479,7 @@ nova_inode_alter_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 	while (1) {
 		nova_memunlock_block(sb, nova_get_block(sb, new_curr),
 				     &irq_flags);
+		/* TODO: 4K writes from nvmm to nvmm, shall we do delegation? */
 		memcpy_to_pmem_nocache(nova_get_block(sb, new_curr),
 				       nova_get_block(sb, curr_p),
 				       LOG_BLOCK_TAIL);

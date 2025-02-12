@@ -2,14 +2,27 @@
 # Makefile for the linux PARFS filesystem routines.
 #
 
-obj-$(CONFIG_PARFS) += parfs.o
+KDIR ?= /lib/modules/`uname -r`/build
+BDIR ?= $(CURDIR)/build
+BDIR_MAKEFILE ?= $(BDIR)/Makefile
+MCONFIG = CONFIG_PCI_RING_BUFFER=m
 
-parfs-y := balloc.o bbuild.o checksum.o dax.o dir.o file.o gc.o inode.o ioctl.o \
-	journal.o log.o mprotect.o namei.o parity.o rebuild.o snapshot.o stats.o \
-	super.o symlink.o sysfs.o perf.o
+default: $(BDIR_MAKEFILE)
+	$(MAKE) -C $(KDIR) M=$(BDIR) src=$(CURDIR) $(MCONFIG)
 
-all:
-	make -C /lib/modules/$(shell uname -r)/build M=`pwd`
+$(BDIR_MAKEFILE): $(BDIR)
+	touch $(BDIR_MAKEFILE)
+
+$(BDIR):
+	mkdir -p $(BDIR)/
+	mkdir -p $(BDIR)/solros_lib
+
+install: modules_install
+
+modules_install:
+	$(MAKE) -C $(KDIR) M=$(BDIR) src=$(CURDIR) $(MCONFIG) modules_install
 
 clean:
-	make -C /lib/modules/$(shell uname -r)/build M=`pwd` clean
+	$(MAKE) -C $(KDIR) M=$(BDIR) src=$(CURDIR) $(MCONFIG) clean
+
+.PHONY: install modules_install clean

@@ -122,6 +122,7 @@ int nova_init_inode_table(struct super_block *sb)
 	pi->i_flags = 0;
 	pi->nova_ino = NOVA_INODETABLE_INO;
 
+	pi->i_nsocket = nova_get_init_nsocket(NOVA_SB(sb));
 	pi->i_blk_type = NOVA_BLOCK_TYPE_2M;
 	nova_memlock_inode(sb, pi, &irq_flags);
 
@@ -525,10 +526,11 @@ static int nova_read_inode(struct super_block *sb, struct inode *inode,
 	switch (inode->i_mode & S_IFMT) {
 	case S_IFREG:
 		inode->i_op = &nova_file_inode_operations;
-		if (!test_opt(inode->i_sb, DATA_COW) && wprotect == 0)
-			inode->i_fop = &nova_dax_file_operations;
-		else
-			inode->i_fop = &nova_wrap_file_operations;
+		inode->i_fop = &nova_wrap_file_operations;
+		// if (!test_opt(inode->i_sb, DATA_COW) && wprotect == 0)
+		// 	inode->i_fop = &nova_dax_file_operations;
+		// else
+		// 	inode->i_fop = &nova_wrap_file_operations;
 		break;
 	case S_IFDIR:
 		inode->i_op = &nova_dir_inode_operations;
@@ -1109,10 +1111,11 @@ struct inode *nova_new_vfs_inode(struct mnt_idmap *idmap,
 	case TYPE_CREATE:
 		inode->i_op = &nova_file_inode_operations;
 		inode->i_mapping->a_ops = &nova_aops_dax;
-		if (!test_opt(inode->i_sb, DATA_COW) && wprotect == 0)
-			inode->i_fop = &nova_dax_file_operations;
-		else
-			inode->i_fop = &nova_wrap_file_operations;
+		inode->i_fop = &nova_wrap_file_operations;
+		// if (!test_opt(inode->i_sb, DATA_COW) && wprotect == 0)
+		// 	inode->i_fop = &nova_dax_file_operations;
+		// else
+		// 	inode->i_fop = &nova_wrap_file_operations;
 		break;
 	case TYPE_MKNOD:
 		init_special_inode(inode, mode, rdev);
@@ -1139,9 +1142,9 @@ struct inode *nova_new_vfs_inode(struct mnt_idmap *idmap,
 	 */
 	nova_memunlock_inode(sb, pi, &irq_flags);
 	pi->i_blk_type = NOVA_DEFAULT_BLOCK_TYPE;
+	pi->i_nsocket = nova_get_init_nsocket(sbi);
 	pi->i_flags = nova_mask_flags(mode, diri->i_flags);
 	pi->nova_ino = ino;
-	pi->i_create_time = current_time(inode).tv_sec;
 	pi->create_epoch_id = epoch_id;
 	nova_init_inode(inode, pi);
 

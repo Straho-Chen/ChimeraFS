@@ -22,6 +22,7 @@
 #include <asm/mman.h>
 #include "nova.h"
 #include "inode.h"
+#include "delegation.h"
 
 static inline int nova_can_set_blocksize_hint(struct inode *inode,
 					      struct nova_inode *pi,
@@ -472,7 +473,16 @@ static ssize_t do_dax_mapping_read(struct file *filp, char __user *buf,
 	unsigned long offset;
 	loff_t isize, pos;
 	size_t copied = 0, error = 0;
-	INIT_TIMING(memcpy_time);
+
+	INIT_TIMING(fini_delegation_time);
+
+	int cond_cnt = 0;
+	long issued_cnt[NOVA_MAX_SOCKET];
+	struct nova_notifyer completed_cnt[NOVA_MAX_SOCKET];
+
+	memset(issued_cnt, 0, sizeof(long) * NOVA_MAX_SOCKET);
+	memset(completed_cnt, 0,
+	       sizeof(struct nova_notifyer) * NOVA_MAX_SOCKET);
 
 	pos = *ppos;
 	index = pos >> PAGE_SHIFT;
@@ -569,15 +579,8 @@ memcpy:
 			}
 		}
 skip_verify:
-		NOVA_START_TIMING(memcpy_r_nvmm_t, memcpy_time);
-
-		if (!zero)
-			left = __copy_to_user(buf + copied, dax_mem + offset,
-					      nr);
-		else
-			left = __clear_user(buf + copied, nr);
-
-		NOVA_END_TIMING(memcpy_r_nvmm_t, memcpy_time);
+		left = do_nova_nvm_read(sb, buf + copied, dax_mem + offset, nr,
+					len, zero, issued_cnt, completed_cnt);
 
 		if (left) {
 			nova_dbg("%s ERROR!: bytes %lu, left %lu\n", __func__,
@@ -590,9 +593,19 @@ skip_verify:
 		offset += (nr - left);
 		index += offset >> PAGE_SHIFT;
 		offset &= ~PAGE_MASK;
+
+		cond_cnt++;
+		if (cond_cnt >= NOVA_APP_RING_BUFFER_CHECK_COUNT) {
+			cond_cnt = 0;
+			if (need_resched())
+				cond_resched();
+		}
 	} while (copied < len);
 
 out:
+	NOVA_START_TIMING(fini_delegation_r_t, fini_delegation_time);
+	nova_complete_delegation(issued_cnt, completed_cnt);
+	NOVA_END_TIMING(fini_delegation_r_t, fini_delegation_time);
 	*ppos = pos + copied;
 	if (filp)
 		file_accessed(filp);
@@ -650,7 +663,7 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 	size_t bytes;
 	long status = 0;
 	INIT_TIMING(cow_write_time);
-	INIT_TIMING(memcpy_time);
+	INIT_TIMING(fini_delegation_time);
 	unsigned long step = 0;
 	ssize_t ret;
 	u64 begin_tail = 0;
@@ -658,11 +671,20 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 	u64 epoch_id;
 	u32 time;
 	unsigned long irq_flags = 0;
+	bool start_delegation = false;
+
+	int cond_cnt = 0;
+	long issued_cnt[NOVA_MAX_SOCKET];
+	struct nova_notifyer completed_cnt[NOVA_MAX_SOCKET];
 
 	if (len == 0)
 		return 0;
 
 	NOVA_START_TIMING(do_cow_write_t, cow_write_time);
+
+	memset(issued_cnt, 0, sizeof(long) * NOVA_MAX_SOCKET);
+	memset(completed_cnt, 0,
+	       sizeof(struct nova_notifyer) * NOVA_MAX_SOCKET);
 
 	if (!access_ok(buf, len)) {
 		ret = -EFAULT;
@@ -746,21 +768,26 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 							 sih->i_blk_type));
 
 		if (offset || ((offset + bytes) & (PAGE_SIZE - 1)) != 0) {
+			/*
+			 * Do COW. Copy the data from the old block to the new block.
+			 * If the old block is not persent, fill zero to the new block.
+			 */
 			ret = nova_handle_head_tail_blocks(sb, inode, pos,
-							   bytes, kmem);
+							   bytes, kmem,
+							   issued_cnt,
+							   completed_cnt);
 			if (ret)
 				goto out;
 		}
 		/* Now copy from user buf */
-		//		nova_dbg("Write: %p\n", kmem);
-		NOVA_START_TIMING(memcpy_w_nvmm_t, memcpy_time);
-		nova_memunlock_range(sb, kmem + offset, bytes, &irq_flags);
-		copied = bytes -
-			 memcpy_to_pmem_nocache(kmem + offset, buf, bytes);
-		nova_memlock_range(sb, kmem + offset, bytes, &irq_flags);
-		NOVA_END_TIMING(memcpy_w_nvmm_t, memcpy_time);
+		copied = bytes - do_nova_nvmm_write(sb, kmem + offset,
+						    (void *)buf, bytes, len, 0,
+						    1, 0, issued_cnt,
+						    completed_cnt);
+		start_delegation = true;
 
 		if (data_csum > 0 || data_parity > 0) {
+			/* calculate data checksum and write csum to pmem */
 			ret = nova_protect_file_data(sb, inode, pos, bytes, buf,
 						     blocknr, false);
 			if (ret)
@@ -772,10 +799,13 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 		else
 			file_size = cpu_to_le64(inode->i_size);
 
+		/* init log entry */
 		nova_init_file_write_entry(sb, sih, &entry_data, epoch_id,
 					   start_blk, allocated, blocknr, time,
 					   file_size);
 
+		/* write entry to pm; Jm and M */
+		/* may do gc here */
 		ret = nova_append_file_write_entry(sb, pi, inode, &entry_data,
 						   &update);
 		if (ret) {
@@ -804,12 +834,20 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 
 		if (begin_tail == 0)
 			begin_tail = update.curr_entry;
+
+		cond_cnt++;
+		if (cond_cnt >= NOVA_APP_RING_BUFFER_CHECK_COUNT) {
+			cond_cnt = 0;
+			if (need_resched())
+				cond_resched();
+		}
 	}
 
 	data_bits = blk_type_to_shift[sih->i_blk_type];
 	sih->i_blocks += (total_blocks << (data_bits - sb->s_blocksize_bits));
 
 	nova_memunlock_inode(sb, pi, &irq_flags);
+	// update inode (pi->log_tail); like Jc
 	nova_update_inode(sb, inode, pi, &update, 1);
 	nova_memlock_inode(sb, pi, &irq_flags);
 
@@ -832,6 +870,12 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 
 	sih->trans_id++;
 out:
+	if (start_delegation) {
+		/* TODO: We actually need to stop the delegation */
+		NOVA_START_TIMING(fini_delegation_w_t, fini_delegation_time);
+		nova_complete_delegation(issued_cnt, completed_cnt);
+		NOVA_END_TIMING(fini_delegation_w_t, fini_delegation_time);
+	}
 	if (ret < 0)
 		nova_cleanup_incomplete_write(sb, sih, blocknr, allocated,
 					      begin_tail, update.tail);
@@ -918,6 +962,10 @@ static int nova_dax_file_mmap(struct file *file, struct vm_area_struct *vma)
 	return 0;
 }
 
+/*
+ * The difference between nova_wrap_file_ops is read/write_iter.
+ * We hope to do less mmap io. So we don't use this dax_ops.
+ */
 const struct file_operations nova_dax_file_operations = {
 	.llseek = nova_llseek,
 	.read = nova_dax_file_read,

@@ -159,6 +159,28 @@ const char *Timingstring[TIMING_NUM] = {
 	"delete_snapshot",
 	"append_snapshot_filedata",
 	"append_snapshot_inode",
+
+	/* Delegation */
+	"=================== Delegation ===================",
+	"read_do_delegation",
+	"read_prefault",
+	"read_send_request",
+	"read_ring_buffer_enque",
+	"read_finish_delegation",
+	"write_do_delegation",
+	"write_prefault",
+	"write_send_request",
+	"write_ring_buffer_enque",
+	"write_finish_delegation",
+
+	/* IO Agent */
+	"=================== IO Agent ===================",
+	"agent_receive_request",
+	"agent_read_addr_trans",
+	"agent_read_memcpy",
+	"agent_write_addr_trans",
+	"agent_write_memcpy",
+
 };
 
 u64 Timingstats[TIMING_NUM];
@@ -180,7 +202,7 @@ static void nova_print_alloc_stats(struct super_block *sb)
 	unsigned long freed_log_pages = 0;
 	unsigned long free_data_count = 0;
 	unsigned long freed_data_pages = 0;
-	int i;
+	int i, j;
 
 	nova_info("=========== NOVA allocation stats ===========\n");
 	nova_info("Alloc %llu, alloc steps %llu, average %llu\n",
@@ -205,16 +227,18 @@ static void nova_print_alloc_stats(struct super_block *sb)
 			0);
 
 	for (i = 0; i < sbi->cpus; i++) {
-		free_list = nova_get_free_list(sb, i);
+		for (j = 0; j < sbi->sockets; j++) {
+			free_list = nova_get_free_list(sb, i, j);
 
-		alloc_log_count += free_list->alloc_log_count;
-		alloc_log_pages += free_list->alloc_log_pages;
-		alloc_data_count += free_list->alloc_data_count;
-		alloc_data_pages += free_list->alloc_data_pages;
-		free_log_count += free_list->free_log_count;
-		freed_log_pages += free_list->freed_log_pages;
-		free_data_count += free_list->free_data_count;
-		freed_data_pages += free_list->freed_data_pages;
+			alloc_log_count += free_list->alloc_log_count;
+			alloc_log_pages += free_list->alloc_log_pages;
+			alloc_data_count += free_list->alloc_data_count;
+			alloc_data_pages += free_list->alloc_data_pages;
+			free_log_count += free_list->free_log_count;
+			freed_log_pages += free_list->freed_log_pages;
+			free_data_count += free_list->free_data_count;
+			freed_data_pages += free_list->freed_data_pages;
+		}
 	}
 
 	nova_info(
@@ -335,7 +359,7 @@ static void nova_clear_IO_stats(struct super_block *sb)
 {
 	struct nova_sb_info *sbi = NOVA_SB(sb);
 	struct free_list *free_list;
-	int i;
+	int i, j;
 	int cpu;
 
 	for (i = 0; i < STATS_NUM; i++) {
@@ -345,16 +369,18 @@ static void nova_clear_IO_stats(struct super_block *sb)
 	}
 
 	for (i = 0; i < sbi->cpus; i++) {
-		free_list = nova_get_free_list(sb, i);
+		for (j = 0; j < sbi->sockets; j++) {
+			free_list = nova_get_free_list(sb, i, j);
 
-		free_list->alloc_log_count = 0;
-		free_list->alloc_log_pages = 0;
-		free_list->alloc_data_count = 0;
-		free_list->alloc_data_pages = 0;
-		free_list->free_log_count = 0;
-		free_list->freed_log_pages = 0;
-		free_list->free_data_count = 0;
-		free_list->freed_data_pages = 0;
+			free_list->alloc_log_count = 0;
+			free_list->alloc_log_pages = 0;
+			free_list->alloc_data_count = 0;
+			free_list->alloc_data_pages = 0;
+			free_list->free_log_count = 0;
+			free_list->freed_log_pages = 0;
+			free_list->free_data_count = 0;
+			free_list->freed_data_pages = 0;
+		}
 	}
 }
 
@@ -366,15 +392,16 @@ void nova_clear_stats(struct super_block *sb)
 
 void nova_print_inode(struct nova_inode *pi)
 {
-	nova_dbg("%s: NOVA inode %llu\n", __func__, pi->nova_ino);
+	nova_dbg("%s: NOVA inode %llu, nsocket: %d\n", __func__, pi->nova_ino,
+		 pi->i_nsocket);
 	nova_dbg("valid %u, deleted %u, blk type %u, flags %u\n", pi->valid,
 		 pi->deleted, pi->i_blk_type, pi->i_flags);
 	nova_dbg("size %llu, ctime %u, mtime %u, atime %u\n", pi->i_size,
 		 pi->i_ctime, pi->i_mtime, pi->i_atime);
 	nova_dbg("mode %u, links %u, xattr 0x%llx, csum %u\n", pi->i_mode,
 		 pi->i_links_count, pi->i_xattr, pi->csum);
-	nova_dbg("uid %u, gid %u, gen %u, create time %u\n", pi->i_uid,
-		 pi->i_gid, pi->i_generation, pi->i_create_time);
+	nova_dbg("uid %u, gid %u, gen %u\n", pi->i_uid, pi->i_gid,
+		 pi->i_generation);
 	nova_dbg("head 0x%llx, tail 0x%llx, alter head 0x%llx, tail 0x%llx\n",
 		 pi->log_head, pi->log_tail, pi->alter_log_head,
 		 pi->alter_log_tail);

@@ -117,46 +117,103 @@ static void nova_set_blocksize(struct super_block *sb, unsigned long size)
 
 static int nova_get_nvmm_info(struct super_block *sb, struct nova_sb_info *sbi)
 {
-	void *virt_addr = NULL;
-	pfn_t __pfn_t;
-	long size;
-	struct dax_device *dax_dev;
+	int i;
 
-	sbi->s_bdev = sb->s_bdev;
-
-	uint64_t start_off;
-	dax_dev = fs_dax_get_by_bdev(sb->s_bdev, &start_off, NULL, NULL);
-
-	if (!dax_dev) {
-		nova_err(sb, "Couldn't retrieve DAX device.\n");
-		return -EINVAL;
-	}
-	sbi->s_dax_dev = dax_dev;
-
-	size = dax_direct_access(sbi->s_dax_dev, 0, LONG_MAX / PAGE_SIZE,
-				 DAX_ACCESS, &virt_addr, &__pfn_t) *
-	       PAGE_SIZE;
-	if (size <= 0) {
-		nova_err(sb, "direct_access failed\n");
+	if (pmem_ar_dev.elem_num == 0) {
+		nova_err(sb, "No device in pmem array!\n");
 		return -EINVAL;
 	}
 
-	sbi->virt_addr = virt_addr;
+	/*
+   * TODO: Here we are making two assumptions.
+   * 1. The pmem_ar_dev.bdevs[i] corresponds to the nvm dimm on socket[i]
+   * 2. The mapping of pmem_ar_dev.bdevs does not change over the reboot
+   *
+   * Fix them when have time.
+   */
+	for (i = 0; i < pmem_ar_dev.elem_num; i++) {
+		void *virt_addr = NULL;
+		pfn_t __pfn_t;
+		long size;
+		struct dax_device *dax_dev;
+
+		uint64_t start_off;
+		dax_dev =
+			fs_dax_get_by_bdev(sb->s_bdev, &start_off, NULL, NULL);
+
+		if (!dax_dev) {
+			nova_err(sb, "Couldn't retrieve DAX device.\n");
+			return -EINVAL;
+		}
+
+		size = dax_direct_access(dax_dev, 0, LONG_MAX / PAGE_SIZE,
+					 DAX_ACCESS, &virt_addr, &__pfn_t) *
+		       PAGE_SIZE;
+		if (size <= 0) {
+			nova_err(sb, "direct_access failed\n");
+			return -EINVAL;
+		}
+
+		pmem_ar_dev.start_virt_addr[i] = (unsigned long)virt_addr;
+		pmem_ar_dev.size_in_bytes[i] = size;
+
+		if (i == 0 || virt_addr < sbi->virt_addr) {
+			sbi->virt_addr = virt_addr;
+			sbi->phys_addr = pfn_t_to_pfn(__pfn_t) << PAGE_SHIFT;
+			// place all alter inode and reserved inodes on head pm
+			sbi->replica_reserved_inodes_addr =
+				virt_addr + size -
+				(sbi->tail_reserved_blocks << PAGE_SHIFT);
+			sbi->replica_sb_addr = virt_addr + size - PAGE_SIZE;
+			sbi->head_socket = i;
+		}
+	}
+	sbi->tail_socket = i - 1;
 
 	if (!sbi->virt_addr) {
 		nova_err(sb, "ioremap of the nova image failed(1)\n");
 		return -EINVAL;
 	}
 
-	sbi->phys_addr = pfn_t_to_pfn(__pfn_t) << PAGE_SHIFT;
-	sbi->initsize = size;
-	sbi->replica_reserved_inodes_addr =
-		virt_addr + size - (sbi->tail_reserved_blocks << PAGE_SHIFT);
-	sbi->replica_sb_addr = virt_addr + size - PAGE_SIZE;
+	sbi->num_blocks = 0;
+	sbi->initsize = 0;
+
+	for (i = 0; i < pmem_ar_dev.elem_num; i++) {
+		/*
+     	* Implicitly assume 4KB block size is bad, but it is all over odinfs
+     	* code ...
+		*/
+
+		unsigned long size_in_blocks = pmem_ar_dev.size_in_bytes[i] >>
+					       PAGE_SHIFT;
+
+		/*
+     	* We use the block number to hide the virtual address gap between
+     	* NVM dimms
+     	*/
+
+		sbi->block_info[i].start_block =
+			(pmem_ar_dev.start_virt_addr[i] -
+			 (unsigned long)sbi->virt_addr) >>
+			PAGE_SHIFT;
+
+		sbi->block_info[i].end_block =
+			sbi->block_info[i].start_block + size_in_blocks - 1;
+
+		sbi->num_blocks += size_in_blocks;
+		sbi->initsize += pmem_ar_dev.size_in_bytes[i];
+
+		nova_dbg("heap socket: %d, start_block: %lu, end_block: %lu\n",
+			 i, sbi->block_info[i].start_block,
+			 sbi->block_info[i].end_block);
+	}
 
 	nova_dbg("%s: dev %s, phys_addr 0x%llx, virt_addr 0x%lx, size %ld\n",
-		 __func__, sbi->s_bdev->bd_disk->disk_name, sbi->phys_addr,
+		 __func__, pmem_ar_dev.gd->disk_name, sbi->phys_addr,
 		 (unsigned long)sbi->virt_addr, sbi->initsize);
+
+	/* duplicate the info in the sbi */
+	sbi->device_num = pmem_ar_dev.elem_num;
 
 	return 0;
 }
@@ -405,7 +462,6 @@ static struct nova_inode *nova_init(struct super_block *sb, unsigned long size)
 
 	NOVA_START_TIMING(new_init_t, init_time);
 	nova_info("creating an empty nova of size %lu\n", size);
-	sbi->num_blocks = ((unsigned long)(size) >> PAGE_SHIFT);
 
 	nova_dbgv("nova: Default block size set to 4K\n");
 	sbi->blocksize = blocksize = NOVA_DEF_BLOCK_SIZE_4K;
@@ -498,6 +554,7 @@ static inline void set_default_opts(struct nova_sb_info *sbi)
 	sbi->head_reserved_blocks = HEAD_RESERVED_BLOCKS;
 	sbi->tail_reserved_blocks = TAIL_RESERVED_BLOCKS;
 	sbi->cpus = num_online_cpus();
+	sbi->sockets = pmem_ar_dev.elem_num;
 	nova_info("%d cpus online\n", sbi->cpus);
 	sbi->map_id = 0;
 	sbi->snapshot_si = NULL;
@@ -734,6 +791,9 @@ static int nova_fill_super(struct super_block *sb, void *data, int silent)
 		goto out;
 	}
 
+	/* Recover journal.
+	 * Just check the entry vaildity, not undo invaild journal.
+	 */
 	if (nova_lite_journal_soft_init(sb)) {
 		retval = -EINVAL;
 		nova_err(sb, "Lite journal initialization failed\n");
@@ -756,7 +816,7 @@ static int nova_fill_super(struct super_block *sb, void *data, int silent)
 	/* Read the root inode */
 	root_pi = nova_get_inode_by_ino(sb, NOVA_ROOT_INO);
 
-	/* Check that the root inode is in a sane state */
+	/* Check that the root inode is in a safe state */
 	nova_root_check(sb, root_pi);
 
 	/* Set it all up.. */

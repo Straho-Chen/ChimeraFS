@@ -832,10 +832,17 @@ int nova_assign_write_entry(struct super_block *sb,
 	for (i = 0; i < num; i++) {
 		curr_pgoff = start_pgoff + i;
 
+		/* find the radix tree entry */
 		pentry = radix_tree_lookup_slot(&sih->tree, curr_pgoff);
 		if (pentry) {
+			/* deref pentry to find the write entry */
 			old_entry = radix_tree_deref_slot(pentry);
 			if (old_entry != start_old_entry) {
+				/*
+				 * first time start_old_entry is NULL, so not free it, just store it
+				 * second time, old_entry is different from start_old_entry means we have a new one to free
+				 * so free the old one and store the new one to count the pages need to free
+				 */
 				if (start_old_entry && free)
 					nova_free_old_entry(sb, sih,
 							    start_old_entry,
@@ -847,13 +854,17 @@ int nova_assign_write_entry(struct super_block *sb,
 
 				start_old_entry = old_entry;
 				start_old_pgoff = curr_pgoff;
+				/* we have a new entry, so reset the counter to 1 */
 				num_free = 1;
 			} else {
+				/* the same entry's pages, add counter */
 				num_free++;
 			}
 
+			/* replace entry in radix tree */
 			radix_tree_replace_slot(&sih->tree, pentry, entry);
 		} else {
+			/* slot is null, fill it */
 			ret = radix_tree_insert(&sih->tree, curr_pgoff, entry);
 			if (ret) {
 				nova_dbg("%s: ERROR %d\n", __func__, ret);

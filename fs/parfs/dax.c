@@ -19,12 +19,15 @@
 #include <asm/pgtable.h>
 #include <linux/version.h>
 #include "nova.h"
+#include "delegation.h"
 
 static inline int nova_copy_partial_block(struct super_block *sb,
 					  struct nova_inode_info_header *sih,
 					  struct nova_file_write_entry *entry,
 					  unsigned long index, size_t offset,
-					  size_t length, void *kmem)
+					  size_t length, void *kmem,
+					  long *issued_cnt,
+					  struct nova_notifyer *completed_cnt)
 {
 	void *ptr;
 	int rc = 0;
@@ -34,11 +37,9 @@ static inline int nova_copy_partial_block(struct super_block *sb,
 	ptr = nova_get_block(sb, (nvmm << PAGE_SHIFT));
 
 	if (ptr != NULL) {
-		if (support_clwb)
-			rc = memcpy_mcsafe(kmem + offset, ptr + offset, length);
-		else
-			memcpy_to_pmem_nocache(kmem + offset, ptr + offset,
-					       length);
+		do_nova_nvmm_write(sb, kmem + offset, ptr + offset, length,
+				   length, 0, support_clwb, 0, issued_cnt,
+				   completed_cnt);
 	}
 
 	/* TODO: If rc < 0, go to MCE data recovery. */
@@ -49,20 +50,18 @@ static inline int nova_handle_partial_block(struct super_block *sb,
 					    struct nova_inode_info_header *sih,
 					    struct nova_file_write_entry *entry,
 					    unsigned long index, size_t offset,
-					    size_t length, void *kmem)
+					    size_t length, void *kmem,
+					    long *issued_cnt,
+					    struct nova_notifyer *completed_cnt)
 {
-	struct nova_sb_info *sbi = NOVA_SB(sb);
 	struct nova_file_write_entry *entryc, entry_copy;
 	unsigned long irq_flags = 0;
 
 	nova_memunlock_block(sb, kmem, &irq_flags);
 	if (entry == NULL) {
 		/* Fill zero */
-		if (support_clwb)
-			memset(kmem + offset, 0, length);
-		else
-			memcpy_to_pmem_nocache(kmem + offset, sbi->zeroed_page,
-					       length);
+		do_nova_nvmm_write(sb, kmem + offset, NULL, length, length, 1,
+				   support_clwb, 0, issued_cnt, completed_cnt);
 	} else {
 		/* Copy from original block */
 		if (metadata_csum == 0)
@@ -74,11 +73,9 @@ static inline int nova_handle_partial_block(struct super_block *sb,
 		}
 
 		nova_copy_partial_block(sb, sih, entryc, index, offset, length,
-					kmem);
+					kmem, issued_cnt, completed_cnt);
 	}
 	nova_memlock_block(sb, kmem, &irq_flags);
-	if (support_clwb)
-		nova_flush_buffer(kmem + offset, length, 0);
 	return 0;
 }
 
@@ -88,7 +85,9 @@ static inline int nova_handle_partial_block(struct super_block *sb,
  * Fill zero otherwise.
  */
 int nova_handle_head_tail_blocks(struct super_block *sb, struct inode *inode,
-				 loff_t pos, size_t count, void *kmem)
+				 loff_t pos, size_t count, void *kmem,
+				 long *issued_cnt,
+				 struct nova_notifyer *completed_cnt)
 {
 	struct nova_inode_info *si = NOVA_I(inode);
 	struct nova_inode_info_header *sih = &si->header;
@@ -113,9 +112,11 @@ int nova_handle_head_tail_blocks(struct super_block *sb, struct inode *inode,
 	nova_dbg_verbose("%s: start offset %lu start blk %lu %p\n", __func__,
 			 offset, start_blk, kmem);
 	if (offset != 0) {
+		/* copy [start, offset] from old block(or fill 0) to new cow block */
 		entry = nova_get_write_entry(sb, sih, start_blk);
 		ret = nova_handle_partial_block(sb, sih, entry, start_blk, 0,
-						offset, kmem);
+						offset, kmem, issued_cnt,
+						completed_cnt);
 		if (ret < 0)
 			return ret;
 	}
@@ -128,10 +129,12 @@ int nova_handle_head_tail_blocks(struct super_block *sb, struct inode *inode,
 	if (eblk_offset != 0) {
 		entry = nova_get_write_entry(sb, sih, end_blk);
 
+		/* copy [end, blk_end] from old block(or fill 0) to new cow block */
 		ret = nova_handle_partial_block(sb, sih, entry, end_blk,
 						eblk_offset,
 						sb->s_blocksize - eblk_offset,
-						kmem);
+						kmem, issued_cnt,
+						completed_cnt);
 		if (ret < 0)
 			return ret;
 	}
@@ -299,6 +302,7 @@ int nova_protect_file_data(struct super_block *sb, struct inode *inode,
 	if (bytes > count)
 		bytes = count;
 
+	/* load first block from buf to blockbuf(in memory) */
 	left = copy_from_user(blockbuf + offset, buf, bytes);
 	NOVA_END_TIMING(protect_memcpy_t, memcpy_time);
 	if (unlikely(left != 0)) {
@@ -337,25 +341,27 @@ int nova_protect_file_data(struct super_block *sb, struct inode *inode,
 				}
 			}
 
+			/* load data from nvmm to blockbuf */
 			ret = memcpy_mcsafe(blockbuf, blockptr, offset);
 			if (ret < 0)
 				goto out;
 		} else {
+			/* block not found in radix tree, which means it is a new block, so [0, offset] is 0 */
 			memset(blockbuf, 0, offset);
 		}
 
 		/* copying existing checksums from nvmm can be even slower than
-* re-computing checksums of a whole block.
-if (data_csum > 0)
-nova_copy_partial_block_csum(sb, sih, entry, start_blk,
-                    offset, blocknr, false);
-*/
+		* re-computing checksums of a whole block.
+			if (data_csum > 0)
+			nova_copy_partial_block_csum(sb, sih, entry, start_blk, offset, blocknr, false);
+		*/
 	}
 
 	if (num_blocks == 1)
 		goto eblk;
 
 	do {
+		/* calculate and write checksum of blockbuf in a block granularity */
 		if (inplace)
 			nova_update_block_csum_parity(sb, sih, blockbuf,
 						      blocknr, offset, bytes);
@@ -589,7 +595,7 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 	size_t bytes;
 	long status = 0;
 	INIT_TIMING(inplace_write_time);
-	INIT_TIMING(memcpy_time);
+	INIT_TIMING(fini_delegation_time);
 	unsigned long step = 0;
 	u64 begin_tail = 0;
 	u64 epoch_id;
@@ -597,11 +603,19 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 	u32 time;
 	ssize_t ret;
 	unsigned long irq_flags = 0;
+	bool start_delegation = false;
+
+	long issued_cnt[NOVA_MAX_SOCKET];
+	struct nova_notifyer completed_cnt[NOVA_MAX_SOCKET];
 
 	if (len == 0)
 		return 0;
 
 	NOVA_START_TIMING(inplace_write_t, inplace_write_time);
+
+	memset(issued_cnt, 0, sizeof(long) * NOVA_MAX_SOCKET);
+	memset(completed_cnt, 0,
+	       sizeof(struct nova_notifyer) * NOVA_MAX_SOCKET);
 
 	if (!access_ok(buf, len)) {
 		ret = -EFAULT;
@@ -697,19 +711,19 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 		if (hole_fill &&
 		    (offset || ((offset + bytes) & (PAGE_SIZE - 1)) != 0)) {
 			ret = nova_handle_head_tail_blocks(sb, inode, pos,
-							   bytes, kmem);
+							   bytes, kmem,
+							   issued_cnt,
+							   completed_cnt);
 			if (ret)
 				goto out;
 		}
 
 		/* Now copy from user buf */
-		//		nova_dbg("Write: %p\n", kmem);
-		NOVA_START_TIMING(memcpy_w_nvmm_t, memcpy_time);
-		nova_memunlock_range(sb, kmem + offset, bytes, &irq_flags);
-		copied = bytes -
-			 memcpy_to_pmem_nocache(kmem + offset, buf, bytes);
-		nova_memlock_range(sb, kmem + offset, bytes, &irq_flags);
-		NOVA_END_TIMING(memcpy_w_nvmm_t, memcpy_time);
+		copied = bytes - do_nova_nvmm_write(sb, kmem + offset,
+						    (void *)buf, bytes, len, 0,
+						    1, 0, issued_cnt,
+						    completed_cnt);
+		start_delegation = true;
 
 		if (data_csum > 0 || data_parity > 0) {
 			ret = nova_protect_file_data(sb, inode, pos, bytes, buf,
@@ -809,6 +823,12 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 
 	sih->trans_id++;
 out:
+	if (start_delegation) {
+		/* TODO: We actually need to stop the delegation */
+		NOVA_START_TIMING(fini_delegation_w_t, fini_delegation_time);
+		nova_complete_delegation(issued_cnt, completed_cnt);
+		NOVA_END_TIMING(fini_delegation_w_t, fini_delegation_time);
+	}
 	if (ret < 0)
 		nova_cleanup_incomplete_write(sb, sih, blocknr, allocated,
 					      begin_tail, update.tail);
@@ -1019,7 +1039,6 @@ int nova_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
 		     unsigned int flags, struct iomap *iomap,
 		     struct iomap *srcmap, bool taking_lock)
 {
-	struct nova_sb_info *sbi = NOVA_SB(inode->i_sb);
 	unsigned int blkbits = inode->i_blkbits;
 	unsigned long first_block = offset >> blkbits;
 	unsigned long max_blocks = (length + (1 << blkbits) - 1) >> blkbits;
@@ -1036,7 +1055,8 @@ int nova_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
 
 	iomap->flags = 0;
 	iomap->bdev = inode->i_sb->s_bdev;
-	iomap->dax_dev = sbi->s_dax_dev;
+	// TODO: need to fix, we don't have a unify dax device
+	iomap->dax_dev = pmem_ar_dev.dax_dev[0];
 	iomap->offset = (u64)first_block << blkbits;
 
 	if (ret == 0) {

@@ -61,15 +61,10 @@ static int nova_calculate_block_parity(struct super_block *sb, u8 *parity,
  *          - should be in kernel memory (dram) to avoid page faults
  * blocknr: destination nvmm block number where the block is written to
  *          - used to derive the parity stripe address
-
+ *
  * If the modified content is less than a stripe size (small writes), it's
  * possible to re-compute the parity only using the difference of the modified
  * stripe, without re-computing for the whole block.
-
-static int nova_update_block_parity(struct super_block *sb,
-	struct nova_inode_info_header *sih, void *block, unsigned long blocknr,
-	size_t offset, size_t bytes, int zero)
-
  */
 static int nova_update_block_parity(struct super_block *sb, u8 *block,
 				    unsigned long blocknr, int zero)
@@ -78,6 +73,7 @@ static int nova_update_block_parity(struct super_block *sb, u8 *block,
 	void *parity, *nvmmptr;
 	int ret = 0;
 	unsigned long irq_flags = 0;
+
 	INIT_TIMING(block_parity_time);
 
 	NOVA_START_TIMING(block_parity_t, block_parity_time);
@@ -228,6 +224,7 @@ int nova_update_block_csum_parity(struct super_block *sb,
 
 			nvmmptr = nova_get_data_csum_addr(sb, strp_nr, 0);
 			nvmmptr1 = nova_get_data_csum_addr(sb, strp_nr, 1);
+			/* Here is small size writes. We don't call delegation write here. */
 			nova_memunlock_range(sb, nvmmptr, csum_size * 8,
 					     &irq_flags);
 			memcpy_to_pmem_nocache(nvmmptr, crc, csum_size * 8);
@@ -240,6 +237,7 @@ int nova_update_block_csum_parity(struct super_block *sb,
 			nvmmptr = nova_get_parity_addr(sb, blocknr);
 			nova_memunlock_range(sb, nvmmptr, strp_size,
 					     &irq_flags);
+			/* Strip size is 512 bytes. So we need to do delegation here, if we use data_parity. */
 			memcpy_to_pmem_nocache(nvmmptr, parity, strp_size);
 			nova_memlock_range(sb, nvmmptr, strp_size, &irq_flags);
 		}
@@ -268,6 +266,10 @@ out:
  *
  * If recovery succeeded, the known good checksum is returned by csum_good, and
  * the caller will also check if any checksum restoration is necessary.
+ *
+ * This function need to read a block first and then calculate the parity and write
+ * the restored stripe to nvmm. It has IO order requirement. So we don't delegate here.
+ * But if we need to change the restore flow, we should rethink about delegation.
  */
 int nova_restore_data(struct super_block *sb, unsigned long blocknr,
 		      unsigned int badstrip_id, void *badstrip, int nvmmerr,
@@ -307,6 +309,7 @@ int nova_restore_data(struct super_block *sb, unsigned long blocknr,
 	num_strps = sb->s_blocksize >> strp_shift;
 	for (i = 0; i < num_strps; i++) {
 		offset = i << strp_shift;
+		/* Read 512 bytes from nvm. Shall we do delegation here? */
 		if (i == badstrip_id)
 			/* parity strip has media errors */
 			ret = memcpy_mcsafe(block + offset, parity, strp_size);
@@ -354,6 +357,7 @@ int nova_restore_data(struct super_block *sb, unsigned long blocknr,
 	if (success) {
 		/* recovery success, repair the bad nvmm data */
 		nova_memunlock_range(sb, stripptr, strp_size, &irq_flags);
+		/* Write 512 bytes here. TODO: Shall we do delegation here? */
 		memcpy_to_pmem_nocache(stripptr, strip, strp_size);
 		nova_memlock_range(sb, stripptr, strp_size, &irq_flags);
 
