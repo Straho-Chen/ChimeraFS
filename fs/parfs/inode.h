@@ -351,7 +351,7 @@ static inline struct nova_inode *nova_get_inode(struct super_block *sb,
 	return (struct nova_inode *)addr;
 }
 
-const struct address_space_operations nova_aops_dax;
+extern const struct address_space_operations nova_aops_dax;
 int nova_init_inode_inuse_list(struct super_block *sb);
 int nova_init_inode_table(struct super_block *sb);
 int nova_get_alter_inode_address(struct super_block *sb, u64 ino,

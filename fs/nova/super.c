@@ -1248,4 +1248,5 @@ MODULE_AUTHOR("Andiry Xu <jix024@cs.ucsd.edu>");
 MODULE_DESCRIPTION("NOVA: A Persistent Memory File System");
 MODULE_LICENSE("GPL");
 
-module_init(init_nova_fs) module_exit(exit_nova_fs)
+module_init(init_nova_fs);
+module_exit(exit_nova_fs);

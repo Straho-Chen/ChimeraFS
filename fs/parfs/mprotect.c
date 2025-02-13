@@ -23,7 +23,6 @@
 #include <linux/mm.h>
 #include <linux/io.h>
 #include "nova.h"
-#include "inode.h"
 
 int nova_get_vma_overlap_range(struct super_block *sb,
 			       struct nova_inode_info_header *sih,

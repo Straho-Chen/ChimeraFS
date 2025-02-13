@@ -1145,4 +1145,5 @@ MODULE_AUTHOR("Intel Corporation <linux-pmfs@intel.com>");
 MODULE_DESCRIPTION("Persistent Memory File System");
 MODULE_LICENSE("GPL");
 
-module_init(init_pmfs_fs) module_exit(exit_pmfs_fs)
+module_init(init_pmfs_fs);
+module_exit(exit_pmfs_fs);

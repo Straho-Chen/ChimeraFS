@@ -1335,4 +1335,5 @@ MODULE_AUTHOR("Intel Corporation <linux-odinfs@intel.com>");
 MODULE_DESCRIPTION("Persistent Memory File System");
 MODULE_LICENSE("GPL");
 
-module_init(init_odinfs_fs) module_exit(exit_odinfs_fs)
+module_init(init_odinfs_fs);
+module_exit(exit_odinfs_fs);

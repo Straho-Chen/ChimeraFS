@@ -26,7 +26,8 @@
 #include <linux/fs.h>
 #include <linux/bitops.h>
 #include "nova.h"
-#include "inode.h"
+
+DEFINE_PER_CPU(u32, seed);
 
 int nova_alloc_block_free_lists(struct super_block *sb)
 {

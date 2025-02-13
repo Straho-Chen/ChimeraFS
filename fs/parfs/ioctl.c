@@ -19,7 +19,6 @@
 #include <linux/compat.h>
 #include <linux/mount.h>
 #include "nova.h"
-#include "inode.h"
 
 long nova_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {

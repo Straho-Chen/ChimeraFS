@@ -16,7 +16,6 @@
  */
 
 #include "nova.h"
-#include "inode.h"
 
 /* entry given to this function is a copy in dram */
 static void nova_apply_setattr_entry(struct super_block *sb,

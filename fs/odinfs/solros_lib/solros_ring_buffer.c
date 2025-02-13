@@ -514,7 +514,7 @@ err_out:
 	*prb = NULL;
 	return -rc;
 }
-EXPORT_SYMBOL(__solros_ring_buffer_create);
+// EXPORT_SYMBOL(__solros_ring_buffer_create);
 
 #ifdef RING_BUFFER_CONF_NO_MMAP
 static void __rb_free_memory(struct solros_ring_buffer_t *rb)
@@ -595,7 +595,7 @@ void solros_ring_buffer_destroy(struct solros_ring_buffer_t *rb, int is_open,
 	shm_unlink(shm_name);
 #endif
 }
-EXPORT_SYMBOL(solros_ring_buffer_destroy);
+// EXPORT_SYMBOL(solros_ring_buffer_destroy);
 
 static inline void rb_rmb(struct solros_ring_buffer_t *rb, int op_type)
 {
@@ -818,7 +818,7 @@ int solros_ring_buffer_is_full(struct solros_ring_buffer_t *rb)
 	size_t head_next = (rb->head + 1) % rb->size;
 	return rb->tail2 == head_next;
 }
-EXPORT_SYMBOL(solros_ring_buffer_is_full);
+// EXPORT_SYMBOL(solros_ring_buffer_is_full);
 
 static size_t free_space_size(struct solros_ring_buffer_t *rb)
 {
@@ -850,7 +850,7 @@ size_t solros_ring_buffer_free_space(struct solros_ring_buffer_t *rb)
 	rb_rmb_head_tail2(rb); /* XXX ??? */
 	return free_space_size(rb);
 }
-EXPORT_SYMBOL(solros_ring_buffer_free_space);
+// EXPORT_SYMBOL(solros_ring_buffer_free_space);
 
 size_t solros_ring_buffer_secure_free_space(struct solros_ring_buffer_t *rb,
 					    size_t n)
@@ -879,7 +879,7 @@ size_t solros_ring_buffer_secure_free_space(struct solros_ring_buffer_t *rb,
 
 	return free_size;
 }
-EXPORT_SYMBOL(solros_ring_buffer_secure_free_space);
+// EXPORT_SYMBOL(solros_ring_buffer_secure_free_space);
 
 static void _leave_fingerprint(void *data)
 {
@@ -943,7 +943,7 @@ void solros_ring_buffer_assert_fingerprint(void *data)
 {
 	_check_fingerprint(data);
 }
-EXPORT_SYMBOL(solros_ring_buffer_assert_fingerprint);
+// EXPORT_SYMBOL(solros_ring_buffer_assert_fingerprint);
 
 static void __ring_buffer_put(struct solros_ring_buffer_t *rb,
 			      struct solros_ring_buffer_req_t *req)
@@ -1027,7 +1027,7 @@ int solros_ring_buffer_is_empty(struct solros_ring_buffer_t *rb)
 	}
 	return 0;
 }
-EXPORT_SYMBOL(solros_ring_buffer_is_empty);
+// EXPORT_SYMBOL(solros_ring_buffer_is_empty);
 
 static void __ring_buffer_get(struct solros_ring_buffer_t *rb,
 			      struct solros_ring_buffer_req_t *req)
@@ -1146,7 +1146,7 @@ void solros_ring_buffer_req_barrier(struct solros_ring_buffer_req_t *req)
 		smp_rmb();
 	} while (1);
 }
-EXPORT_SYMBOL(solros_ring_buffer_req_barrier);
+// EXPORT_SYMBOL(solros_ring_buffer_req_barrier);
 
 static inline void exec_op(struct solros_ring_buffer_t *rb, int op_type,
 			   struct solros_ring_buffer_req_t *req)
@@ -1297,7 +1297,7 @@ int solros_ring_buffer_put(struct solros_ring_buffer_t *rb,
 out:
 	return req->rc;
 }
-EXPORT_SYMBOL(solros_ring_buffer_put);
+// EXPORT_SYMBOL(solros_ring_buffer_put);
 
 static inline void __ring_buffer_do(struct solros_ring_buffer_t *rb,
 				    int op_type,
@@ -1350,7 +1350,7 @@ int solros_ring_buffer_put_nolock(struct solros_ring_buffer_t *rb,
 	smp_wmb();
 	return ring_buffer_op_nolock(rb, RING_BUFFER_OP_PUT, req);
 }
-EXPORT_SYMBOL(solros_ring_buffer_put_nolock);
+// EXPORT_SYMBOL(solros_ring_buffer_put_nolock);
 
 int solros_ring_buffer_get(struct solros_ring_buffer_t *rb,
 			   struct solros_ring_buffer_req_t *req)
@@ -1367,14 +1367,14 @@ int solros_ring_buffer_get(struct solros_ring_buffer_t *rb,
 #endif
 	return req->rc;
 }
-EXPORT_SYMBOL(solros_ring_buffer_get);
+// EXPORT_SYMBOL(solros_ring_buffer_get);
 
 int solros_ring_buffer_get_nolock(struct solros_ring_buffer_t *rb,
 				  struct solros_ring_buffer_req_t *req)
 {
 	return ring_buffer_op_nolock(rb, RING_BUFFER_OP_GET, req);
 }
-EXPORT_SYMBOL(solros_ring_buffer_get_nolock);
+// EXPORT_SYMBOL(solros_ring_buffer_get_nolock);
 
 void solros_ring_buffer_elm_set_ready(struct solros_ring_buffer_t *rb,
 				      void *data)
@@ -1404,7 +1404,7 @@ void solros_ring_buffer_elm_set_ready(struct solros_ring_buffer_t *rb,
 	}
 	smp_wmb_tso();
 }
-EXPORT_SYMBOL(solros_ring_buffer_elm_set_ready);
+// EXPORT_SYMBOL(solros_ring_buffer_elm_set_ready);
 
 void solros_ring_buffer_elm_set_done(struct solros_ring_buffer_t *rb,
 				     void *data)
@@ -1445,7 +1445,7 @@ void solros_ring_buffer_elm_set_done(struct solros_ring_buffer_t *rb,
 	}
 	smp_wmb_tso();
 }
-EXPORT_SYMBOL(solros_ring_buffer_elm_set_done);
+// EXPORT_SYMBOL(solros_ring_buffer_elm_set_done);
 
 int solros_ring_buffer_elm_valid(struct solros_ring_buffer_t *rb, void *data)
 {
@@ -1466,7 +1466,7 @@ int solros_ring_buffer_elm_valid(struct solros_ring_buffer_t *rb, void *data)
 	}
 	return 0;
 }
-EXPORT_SYMBOL(solros_ring_buffer_elm_valid);
+// EXPORT_SYMBOL(solros_ring_buffer_elm_valid);
 
 int solros_copy_from_ring_buffer(struct solros_ring_buffer_t *rb,
 				 void *dest_mem, const void *src_rb, size_t n)
@@ -1476,7 +1476,7 @@ int solros_copy_from_ring_buffer(struct solros_ring_buffer_t *rb,
 	__rb_memcpy(dest_mem, src_rb, n);
 	return 0;
 }
-EXPORT_SYMBOL(solros_copy_from_ring_buffer);
+// EXPORT_SYMBOL(solros_copy_from_ring_buffer);
 
 int solros_copy_to_ring_buffer(struct solros_ring_buffer_t *rb, void *dest_rb,
 			       const void *src_mem, size_t n)
@@ -1486,7 +1486,7 @@ int solros_copy_to_ring_buffer(struct solros_ring_buffer_t *rb, void *dest_rb,
 	__rb_memcpy(dest_rb, src_mem, n);
 	return 0;
 }
-EXPORT_SYMBOL(solros_copy_to_ring_buffer);
+// EXPORT_SYMBOL(solros_copy_to_ring_buffer);
 
 void solros_rb_print_stack_trace(void)
 {
@@ -1518,7 +1518,7 @@ void solros_rb_print_stack_trace(void)
 	dump_stack();
 #endif /* RING_BUFFER_CONF_KERNEL */
 }
-EXPORT_SYMBOL(solros_rb_print_stack_trace);
+// EXPORT_SYMBOL(solros_rb_print_stack_trace);
 
 #ifdef RING_BUFFER_TRACE_EVENT
 static char *_get_current_time_string(char *buff, int len)
@@ -1576,7 +1576,7 @@ unsigned int solros_ring_buffer_get_compat_vector(void)
 	return 1;
 #endif
 }
-EXPORT_SYMBOL(solros_ring_buffer_get_compat_vector);
+// EXPORT_SYMBOL(solros_ring_buffer_get_compat_vector);
 
 #ifdef RING_BUFFER_CONF_KERNEL
 

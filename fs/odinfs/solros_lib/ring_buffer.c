@@ -24,7 +24,7 @@ struct solros_ring_buffer_t *solros_ring_create(size_t size_hint, size_t align,
 }
 
 #ifdef RING_BUFFER_CONF_KERNEL
-EXPORT_SYMBOL(solros_ring_create);
+// EXPORT_SYMBOL(solros_ring_create);
 #endif
 
 int solros_ring_enqueue(struct solros_ring_buffer_t *buf, void *data, size_t size,
@@ -71,7 +71,7 @@ done:
 }
 
 #ifdef RING_BUFFER_CONF_KERNEL
-EXPORT_SYMBOL(solros_ring_enqueue);
+// EXPORT_SYMBOL(solros_ring_enqueue);
 #endif
 
 int solros_ring_dequeue(struct solros_ring_buffer_t *buf, void * data,
@@ -125,7 +125,7 @@ error:
 }
 
 #ifdef RING_BUFFER_CONF_KERNEL
-EXPORT_SYMBOL(solros_ring_dequeue);
+// EXPORT_SYMBOL(solros_ring_dequeue);
 #endif
 
 void solros_ring_destroy(struct solros_ring_buffer_t *buf)
@@ -134,5 +134,5 @@ void solros_ring_destroy(struct solros_ring_buffer_t *buf)
 }
 
 #ifdef RING_BUFFER_CONF_KERNEL
-EXPORT_SYMBOL(solros_ring_destroy);
+// EXPORT_SYMBOL(solros_ring_destroy);
 #endif

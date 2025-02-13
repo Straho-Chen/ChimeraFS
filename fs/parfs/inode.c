@@ -24,7 +24,6 @@
 #include <linux/types.h>
 #include <linux/ratelimit.h>
 #include "nova.h"
-#include "inode.h"
 
 unsigned int blk_type_to_shift[NOVA_BLOCK_TYPE_MAX] = { 12, 21, 30 };
 uint32_t blk_type_to_size[NOVA_BLOCK_TYPE_MAX] = { 0x1000, 0x200000,
@@ -1444,21 +1443,21 @@ unsigned long nova_find_region(struct inode *inode, loff_t *offset, int hole)
 	return 0;
 }
 
-static int nova_writepages(struct address_space *mapping,
-			   struct writeback_control *wbc)
-{
-	int ret;
-	struct nova_sb_info *sbi = NOVA_SB(mapping->host->i_sb);
-	INIT_TIMING(wp_time);
+// static int nova_writepages(struct address_space *mapping,
+// 			   struct writeback_control *wbc)
+// {
+// 	int ret;
+// 	struct nova_sb_info *sbi = NOVA_SB(mapping->host->i_sb);
+// 	INIT_TIMING(wp_time);
 
-	NOVA_START_TIMING(write_pages_t, wp_time);
-	ret = dax_writeback_mapping_range(mapping, sbi->s_dax_dev, wbc);
-	NOVA_END_TIMING(write_pages_t, wp_time);
-	return ret;
-}
+// 	NOVA_START_TIMING(write_pages_t, wp_time);
+// 	ret = dax_writeback_mapping_range(mapping, sbi->s_dax_dev, wbc);
+// 	NOVA_END_TIMING(write_pages_t, wp_time);
+// 	return ret;
+// }
 
 const struct address_space_operations nova_aops_dax = {
-	.writepages = nova_writepages,
+	/* .writepages = nova_writepages, */
 	.direct_IO = nova_direct_IO,
 	/*.dax_mem_protect	= nova_dax_mem_protect,*/
 };

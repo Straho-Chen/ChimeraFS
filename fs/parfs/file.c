@@ -21,8 +21,6 @@
 #include <linux/falloc.h>
 #include <asm/mman.h>
 #include "nova.h"
-#include "inode.h"
-#include "delegation.h"
 
 static inline int nova_can_set_blocksize_hint(struct inode *inode,
 					      struct nova_inode *pi,
@@ -579,7 +577,7 @@ memcpy:
 			}
 		}
 skip_verify:
-		left = do_nova_nvm_read(sb, buf + copied, dax_mem + offset, nr,
+		left = do_nova_nvmm_read(sb, buf + copied, dax_mem + offset, nr,
 					len, zero, issued_cnt, completed_cnt);
 
 		if (left) {

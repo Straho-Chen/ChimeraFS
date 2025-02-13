@@ -40,8 +40,6 @@
 #include <linux/dax.h>
 #include "nova.h"
 #include "journal.h"
-#include "super.h"
-#include "inode.h"
 
 int measure_timing;
 int metadata_csum;
@@ -1304,8 +1302,9 @@ static void __exit exit_nova_fs(void)
 	destroy_rangenode_cache();
 }
 
-MODULE_AUTHOR("Andiry Xu <jix024@cs.ucsd.edu>");
-MODULE_DESCRIPTION("NOVA: A Persistent Memory File System");
+MODULE_AUTHOR("Straho Chen <strahochen@foxmail.com>");
+MODULE_DESCRIPTION("PARFS: A Persistent Memory File System");
 MODULE_LICENSE("GPL");
 
-module_init(init_nova_fs) module_exit(exit_nova_fs)
+module_init(init_nova_fs);
+module_exit(exit_nova_fs);

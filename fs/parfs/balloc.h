@@ -1,8 +1,6 @@
 #ifndef __BALLOC_H
 #define __BALLOC_H
 
-#include "inode.h"
-
 /* DRAM structure to hold a list of free PMEM blocks */
 struct free_list {
 	spinlock_t s_lock;

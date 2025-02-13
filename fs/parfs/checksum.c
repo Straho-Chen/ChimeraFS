@@ -16,7 +16,6 @@
  */
 
 #include "nova.h"
-#include "inode.h"
 
 static int nova_get_entry_copy(struct super_block *sb, void *entry,
 			       u32 *entry_csum, size_t *entry_size,

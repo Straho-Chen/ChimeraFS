@@ -17,8 +17,8 @@ for i in ${fs[@]}; do
     cd $i
     make clean && make -j
     sudo rmmod $i
-    sudo insmod $i.ko measure_timing=$timing
     sudo insmod build/$i.ko measure_timing=$timing
+    sudo insmod $i.ko measure_timing=$timing
     cd -
 done
 
