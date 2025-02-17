@@ -1,4 +1,4 @@
-config WINEFS
+config WINEFS_FS
 	tristate "WineFS"
 	depends on FS_DAX 
 	select CRC16
@@ -13,24 +13,24 @@ config WINEFS
 
 config WINEFS_XIP
 	bool "Execute-in-place in WineFS"
-	depends on WINEFS && BLOCK
+	depends on WINEFS_FS && BLOCK
 	help
 	   Say Y here to enable XIP feature of WineFS.
 
 config WINEFS_WRITE_PROTECT
 	bool "WINEFS write protection"
-	depends on WINEFS && MMU && HAVE_SET_MEMORY_RO
+	depends on WINEFS_FS && MMU && HAVE_SET_MEMORY_RO
 	default y
 	help
 	   Say Y here to enable the write protect feature of WineFS.
 
 config WINEFS_TEST
 	bool
-	depends on WINEFS
+	depends on WINEFS_FS
 
 config WINEFS_TEST_MODULE
 	tristate "WINEFS Test"
-	depends on WINEFS && WINEFS_WRITE_PROTECT && m
+	depends on WINEFS_FS && WINEFS_WRITE_PROTECT && m
 	select WINEFS_TEST
 	help
 	  Say Y here to build a simple module to test the protection of

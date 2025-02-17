@@ -26,4 +26,6 @@ void pmem_ar_exit_block(void);
 
 void put_pmem_ar(void);
 
+int pmem_ar_out_range(void* p, unsigned long len);
+
 #endif /* ___PMEM_AR_BLOCK_H_ */

@@ -28,14 +28,11 @@
 static inline int nova_range_check(struct super_block *sb, void *p,
 				   unsigned long len)
 {
-	struct nova_sb_info *sbi = NOVA_SB(sb);
-
-	if (p < sbi->virt_addr || p + len > sbi->virt_addr + sbi->initsize) {
+	// TODO: multi pmem range check sounds too slow.
+	if (pmem_ar_out_range(p, len)) {
 		nova_err(sb,
-			 "access pmem out of range: pmem range 0x%lx - 0x%lx, "
+			 "access pmem out of range:"
 			 "access range 0x%lx - 0x%lx\n",
-			 (unsigned long)sbi->virt_addr,
-			 (unsigned long)(sbi->virt_addr + sbi->initsize),
 			 (unsigned long)p, (unsigned long)(p + len));
 		dump_stack();
 		return -EINVAL;

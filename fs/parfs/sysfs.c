@@ -20,7 +20,7 @@
 
 #include "nova.h"
 
-const char *proc_dirname = "fs/NOVA";
+const char *proc_dirname = "fs/parfs";
 struct proc_dir_entry *nova_proc_root;
 
 /* ====================== Statistics ======================== */

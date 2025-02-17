@@ -14,24 +14,18 @@ MOUNT_SCRIPT_PATH=$ABS_PATH/mount-scripts
 # free memory at first
 echo "Drop caches..."
 sync
-echo 1 | sudo tee /proc/sys/vm/drop_caches
+echo 3 | sudo tee /proc/sys/vm/drop_caches
 sync
-echo 1 | sudo tee /proc/sys/vm/drop_caches
+echo 3 | sudo tee /proc/sys/vm/drop_caches
 sync
-echo 1 | sudo tee /proc/sys/vm/drop_caches
+echo 3 | sudo tee /proc/sys/vm/drop_caches
 
 fs=$1
-# for odinfs
 del_thrds=$2
 
-# if fs is odinfs, we need to specify the number of deletion threads
-if [[ "$fs" == odinfs* ]]; then
-    # check del_thrds not null
-    if [ -z "$del_thrds" ]; then
-        echo "Please specify the number of deletion threads for odinfs"
-        exit 1
-    fi
-    $MOUNT_SCRIPT_PATH/mount-$fs.sh $del_thrds
-else
+# if del_thrds is not null, pass it to the mount script
+if [ -z "$del_thrds" ]; then
     $MOUNT_SCRIPT_PATH/mount-$fs.sh
+else
+    $MOUNT_SCRIPT_PATH/mount-$fs.sh $del_thrds
 fi

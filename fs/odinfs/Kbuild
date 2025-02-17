@@ -1,6 +1,6 @@
 SRC_ROOT := .
 
-obj-$(CONFIG_ODINFS)      += odinfs.o
+obj-$(CONFIG_ODINFS_FS)      += odinfs.o
 odinfs-objs := $(addprefix $(SRC_ROOT)/solros_lib/, \
                  solros_ring_buffer.o \
                  ring_buffer.o)

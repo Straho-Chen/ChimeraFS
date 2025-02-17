@@ -78,7 +78,11 @@
  */
 #define ODINFS_ENABLE_JOURNAL 1
 
-#define ODINFS_FINE_GRAINED_LOCK 1
+/*
+ * We test on vm(ubuntu 22.04), and range lock will call null pointer dereference
+ * which will cause kernel panic. So we disable it.
+ */
+#define ODINFS_FINE_GRAINED_LOCK 0
 
 /* stock inode lock in the linux kernel */
 #define ODINFS_INODE_LOCK_STOCK 1

@@ -45,7 +45,7 @@
 #include "odinfs_config.h"
 #include "ring.h"
 
-int measure_timing = 1;
+int measure_timing = 0;
 int support_clwb_odinfs = 0;
 int support_pcommit_odinfs = 0;
 
@@ -1035,8 +1035,10 @@ static void odinfs_put_super(struct super_block *sb)
 		first_odinfs_super = NULL;
 #endif
 
-	odinfs_print_timing_stats();
-	odinfs_clear_stats();
+	if (measure_timing) {
+		odinfs_print_timing_stats();
+		odinfs_clear_stats();
+	}
 
 	/* It's unmount time, so unmap the odinfs memory */
 	if (sbi->start_virt_addr) {

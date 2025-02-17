@@ -923,6 +923,11 @@ static void nova_put_super(struct super_block *sb)
 	struct inode_map *inode_map;
 	int i;
 
+	if (measure_timing) {
+		nova_print_timing_stats(sb);
+		nova_clear_stats(sb);
+	}
+
 	nova_print_curr_epoch_id(sb);
 
 	/* It's unmount time, so unmap the nova memory */
@@ -1136,7 +1141,7 @@ static struct dentry *nova_mount(struct file_system_type *fs_type, int flags,
 
 static struct file_system_type nova_fs_type = {
 	.owner = THIS_MODULE,
-	.name = "nova",
+	.name = "NOVA",
 	.mount = nova_mount,
 	.kill_sb = kill_block_super,
 };

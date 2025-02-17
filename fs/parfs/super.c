@@ -39,6 +39,7 @@
 #include <linux/list.h>
 #include <linux/dax.h>
 #include "nova.h"
+#include "agent.h"
 #include "journal.h"
 
 int measure_timing;
@@ -73,6 +74,10 @@ MODULE_PARM_DESC(dram_struct_csum,
 module_param(nova_dbgmask, int, 0444);
 MODULE_PARM_DESC(nova_dbgmask, "Control debugging output");
 
+module_param(nova_dele_thrds, int, 0444);
+MODULE_PARM_DESC(nova_dele_thrds,
+		 "The number of per socket delegation threads");
+
 static struct super_operations nova_sops;
 static const struct export_operations nova_export_ops;
 static struct kmem_cache *nova_inode_cachep;
@@ -80,7 +85,8 @@ static struct kmem_cache *nova_range_node_cachep;
 static struct kmem_cache *nova_snapshot_info_cachep;
 
 /* FIXME: should the following variable be one per NOVA instance? */
-unsigned int nova_dbgmask;
+// unsigned int nova_dbgmask = NOVA_DBGMASK_VERBOSE;
+unsigned int nova_dbgmask = 0;
 
 void nova_error_mng(struct super_block *sb, const char *fmt, ...)
 {
@@ -135,9 +141,10 @@ static int nova_get_nvmm_info(struct super_block *sb, struct nova_sb_info *sbi)
 		long size;
 		struct dax_device *dax_dev;
 
+		struct block_device *bdev = pmem_ar_dev.bdevs[i];
+
 		uint64_t start_off;
-		dax_dev =
-			fs_dax_get_by_bdev(sb->s_bdev, &start_off, NULL, NULL);
+		dax_dev = fs_dax_get_by_bdev(bdev, &start_off, NULL, NULL);
 
 		if (!dax_dev) {
 			nova_err(sb, "Couldn't retrieve DAX device.\n");
@@ -147,6 +154,7 @@ static int nova_get_nvmm_info(struct super_block *sb, struct nova_sb_info *sbi)
 		size = dax_direct_access(dax_dev, 0, LONG_MAX / PAGE_SIZE,
 					 DAX_ACCESS, &virt_addr, &__pfn_t) *
 		       PAGE_SIZE;
+
 		if (size <= 0) {
 			nova_err(sb, "direct_access failed\n");
 			return -EINVAL;
@@ -243,6 +251,7 @@ enum {
 	Opt_err_panic,
 	Opt_err_ro,
 	Opt_dbgmask,
+	Opt_dele_thrds,
 	Opt_err
 };
 
@@ -260,6 +269,7 @@ static const match_table_t tokens = {
 	{ Opt_err_panic, "errors=panic" },
 	{ Opt_err_ro, "errors=remount-ro" },
 	{ Opt_dbgmask, "dbgmask=%u" },
+	{ Opt_dele_thrds, "dele_thrds=%u" },
 	{ Opt_err, NULL },
 };
 
@@ -351,6 +361,11 @@ static int nova_parse_options(char *options, struct nova_sb_info *sbi,
 			if (match_int(&args[0], &option))
 				goto bad_val;
 			nova_dbgmask = option;
+			break;
+		case Opt_dele_thrds:
+			if (match_int(&args[0], &option))
+				goto bad_val;
+			nova_dele_thrds = option;
 			break;
 		default: {
 			goto bad_opt;
@@ -863,6 +878,7 @@ setup_sb:
 
 	retval = 0;
 	NOVA_END_TIMING(mount_t, mount_time);
+	nova_dbg_verbose("fill super finish\n");
 	return retval;
 
 out:
@@ -980,6 +996,11 @@ static void nova_put_super(struct super_block *sb)
 	struct nova_sb_info *sbi = NOVA_SB(sb);
 	struct inode_map *inode_map;
 	int i;
+
+	if (measure_timing) {
+		nova_print_timing_stats(sb);
+		nova_clear_stats(sb);
+	}
 
 	nova_print_curr_epoch_id(sb);
 
@@ -1277,6 +1298,10 @@ static int __init init_nova_fs(void)
 	if (rc)
 		goto out2;
 
+	rc = pmem_ar_init_block();
+	if (rc)
+		goto out3;
+
 	rc = register_filesystem(&nova_fs_type);
 	if (rc)
 		goto out3;
@@ -1297,6 +1322,7 @@ static void __exit exit_nova_fs(void)
 {
 	unregister_filesystem(&nova_fs_type);
 	remove_proc_entry(proc_dirname, NULL);
+	pmem_ar_exit_block();
 	destroy_snapshot_info_cache();
 	destroy_inodecache();
 	destroy_rangenode_cache();

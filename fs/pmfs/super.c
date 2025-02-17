@@ -36,7 +36,7 @@
 #include <uapi/linux/mount.h>
 #include "pmfs.h"
 
-int measure_timing = 1;
+int measure_timing = 0;
 int support_clwb = 0;
 int support_pcommit = 0;
 
@@ -884,8 +884,10 @@ static void pmfs_put_super(struct super_block *sb)
 		first_pmfs_super = NULL;
 #endif
 
-	pmfs_print_timing_stats();
-	pmfs_clear_stats();
+	if (measure_timing) {
+		pmfs_print_timing_stats();
+		pmfs_clear_stats();
+	}
 
 	/* It's unmount time, so unmap the pmfs memory */
 	if (sbi->virt_addr) {

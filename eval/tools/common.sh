@@ -41,9 +41,9 @@ function clean_mnt_dir() {
 function drop_cache() {
     echo "Drop caches..."
     sync
-    echo 1 | sudo tee /proc/sys/vm/drop_caches
+    echo 3 | sudo tee /proc/sys/vm/drop_caches
     sync
-    echo 1 | sudo tee /proc/sys/vm/drop_caches
+    echo 3 | sudo tee /proc/sys/vm/drop_caches
     sync
-    echo 1 | sudo tee /proc/sys/vm/drop_caches
+    echo 3 | sudo tee /proc/sys/vm/drop_caches
 }

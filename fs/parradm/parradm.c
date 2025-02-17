@@ -19,7 +19,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  fd = open("/dev/" SPMFS_DEV_INSTANCE_NAME, O_CREAT | O_RDWR);
+  fd = open("/dev/" SPMFS_DEV_INSTANCE_NAME, O_RDWR);
 
   if (fd == -1)
     perror("open");

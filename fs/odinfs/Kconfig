@@ -1,4 +1,4 @@
-config ODINFS
+config ODINFS_FS
 	tristate "ODINFS"
 	depends on HAS_IOMEM
 	select CRC16
@@ -13,24 +13,24 @@ config ODINFS
 
 config ODINFS_XIP
 	bool "Execute-in-place in ODINFS"
-	depends on ODINFS && BLOCK
+	depends on ODINFS_FS && BLOCK
 	help
 	   Say Y here to enable XIP feature of ODINFS.
 
 config ODINFS_WRITE_PROTECT
 	bool "ODINFS write protection"
-	depends on ODINFS && MMU && HAVE_SET_MEMORY_RO
+	depends on ODINFS_FS && MMU && HAVE_SET_MEMORY_RO
 	default y
 	help
 	   Say Y here to enable the write protect feature of ODINFS.
 
 config ODINFS_TEST
 	bool
-	depends on ODINFS
+	depends on ODINFS_FS
 
 config ODINFS_TEST_MODULE
 	tristate "ODINFS Test"
-	depends on ODINFS && ODINFS_WRITE_PROTECT && m
+	depends on ODINFS_FS && ODINFS_WRITE_PROTECT && m
 	select ODINFS_TEST
 	help
 	  Say Y here to build a simple module to test the protection of

@@ -66,8 +66,6 @@
  */
 #define NOVA_ENABLE_JOURNAL 1
 
-#define NOVA_FINE_GRAINED_LOCK 1
-
 /* stock inode lock in the linux kernel */
 #define NOVA_INODE_LOCK_STOCK 1
 /* PCPU_RWSEM from the max paper */
@@ -76,8 +74,6 @@
 #define NOVA_INODE_LOCK_PERCPU 3
 
 #define NOVA_INODE_LOCK NOVA_INODE_LOCK_MAX_PERCPU
-
-#define NOVA_ENABLE_RANGE_LOCK_KMEM_CACHE 1
 
 #define NOVA_WRITE_WAIT_THRESHOLD 2097152L
 #define NOVA_READ_WAIT_THRESHOLD 2097152L

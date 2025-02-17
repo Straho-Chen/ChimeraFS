@@ -2,6 +2,7 @@
 #define __SUPER_H
 
 #include <linux/fs.h>
+#include "pmem_ar_block.h"
 
 /*
  * Structure of the NOVA super block in PMEM
@@ -138,7 +139,7 @@ struct nova_sb_info {
 	int cpus, sockets;
 	int device_num;
 	int head_socket, tail_socket;
-	struct nova_device_info *block_info;
+	struct nova_device_info block_info[PMEM_AR_MAX_DEVICE];
 	struct proc_dir_entry *s_proc;
 
 	/* Snapshot related */

@@ -28,7 +28,7 @@
 
 #include "nova_config.h"
 
-#define NOVA_SUPER_MAGIC 0x4E4F5641 /* NOVA */
+#define NOVA_SUPER_MAGIC 0x9C6E6F2B /* NOVA */
 
 /*
  * The NOVA filesystem constants/structures

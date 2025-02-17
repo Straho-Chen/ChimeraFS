@@ -1,4 +1,4 @@
-config PARFS
+config PARFS_FS
 	tristate "PARFS: parallel log-structured file system for non-volatile memories"
 	depends on FS_DAX
 	depends on LIBNVDIMM

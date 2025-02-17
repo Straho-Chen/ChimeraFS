@@ -167,3 +167,22 @@ void pmem_ar_exit_block(void)
 	put_disk(pmem_ar_dev.gd);
 	unregister_blkdev(PMEM_MAJOR, PMEM_DEV_NAME);
 }
+
+int pmem_ar_out_range(void *p, unsigned long len)
+{
+	int i, ret = 1;
+
+	if (p == NULL || len == 0)
+		return ret;
+
+	for (i = 0; i < pmem_ar_dev.elem_num; i++) {
+		if (p >= (void *)pmem_ar_dev.start_virt_addr[i] &&
+		    p + len < (void *)(pmem_ar_dev.start_virt_addr[i] +
+				       pmem_ar_dev.size_in_bytes[i])) {
+			ret = 0;
+			break;
+		}
+	}
+
+	return ret;
+}

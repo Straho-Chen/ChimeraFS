@@ -1181,6 +1181,11 @@ static void winefs_put_super(struct super_block *sb)
 	struct inode_map *inode_map;
 	int i;
 
+	if (measure_timing) {
+		winefs_print_timing_stats();
+		winefs_clear_stats();
+	}
+
 #ifdef CONFIG_WINEFS_TEST
 	if (first_winefs_super == sbi->virt_addr)
 		first_winefs_super = NULL;

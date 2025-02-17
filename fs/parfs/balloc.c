@@ -926,9 +926,10 @@ static int nova_new_blocks(struct super_block *sb, unsigned long *blocknr,
 		return -EINVAL;
 	}
 
-	NOVA_START_TIMING(new_blocks_t, alloc_time);
 	if (cpuid == ANY_CPU)
 		cpuid = nova_get_cpuid(sb);
+
+	NOVA_START_TIMING(new_blocks_t, alloc_time);
 
 retry:
 	free_list = nova_get_free_list(sb, cpuid, socket);
@@ -1058,6 +1059,8 @@ int nova_new_log_blocks(struct super_block *sb,
 	INIT_TIMING(alloc_time);
 
 	// TODO: current implementation is allocating blocks on the same socket.
+	if (cpu == ANY_CPU)
+		cpu = nova_get_cpuid(sb);
 	socket = cpu_to_node(cpu);
 
 	NOVA_START_TIMING(new_log_blocks_t, alloc_time);

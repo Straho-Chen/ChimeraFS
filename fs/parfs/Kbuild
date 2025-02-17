@@ -1,6 +1,6 @@
 SRC_ROOT := .
 
-obj-$(CONFIG_PARFS)      += parfs.o
+obj-$(CONFIG_PARFS_FS)      += parfs.o
 parfs-objs := $(addprefix $(SRC_ROOT)/solros_lib/, \
                  solros_ring_buffer.o \
                  ring_buffer.o)

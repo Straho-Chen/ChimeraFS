@@ -1,4 +1,4 @@
-config PMFS
+config PMFS_FS
 	tristate "PMFS"
 	depends on HAS_IOMEM
 	select CRC16
@@ -14,24 +14,24 @@ config PMFS
 
 config PMFS_XIP
 	bool "Execute-in-place in PMFS"
-	depends on PMFS && BLOCK
+	depends on PMFS_FS && BLOCK
 	help
 	   Say Y here to enable XIP feature of PMFS.
 
 config PMFS_WRITE_PROTECT
 	bool "PMFS write protection"
-	depends on PMFS && MMU && HAVE_SET_MEMORY_RO
+	depends on PMFS_FS && MMU && HAVE_SET_MEMORY_RO
 	default y
 	help
 	   Say Y here to enable the write protect feature of PMFS.
 
 config PMFS_TEST
 	bool
-	depends on PMFS
+	depends on PMFS_FS
 
 config PMFS_TEST_MODULE
 	tristate "PMFS Test"
-	depends on PMFS && PMFS_WRITE_PROTECT && m
+	depends on PMFS_FS && PMFS_WRITE_PROTECT && m
 	select PMFS_TEST
 	default y
 	help
