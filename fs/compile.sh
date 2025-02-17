@@ -13,8 +13,7 @@ data_checksum=1
 metadata_checksum=1
 
 chsm_fs=(nova parfs)
-# fs=(pmfs nova winefs odinfs parfs)
-fs=(parfs)
+fs=(pmfs nova winefs odinfs parfs)
 
 # Work around, will fix
 sudo rm -rf /dev/pmem_ar*

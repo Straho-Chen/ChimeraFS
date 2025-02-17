@@ -856,6 +856,7 @@ static inline void *nova_get_data_csum_addr(struct super_block *sb, u64 strp_nr,
 
 	blocknr = strp_nr >> BLOCK_SHIFT;
 	index = blocknr / sbi->per_list_blocks;
+	nova_dbg_verbose("%s: cpu: %d\n", __func__, index);
 
 	if (index >= sbi->cpus) {
 		nova_dbg("%s: Invalid blocknr %lu\n", __func__, blocknr);
