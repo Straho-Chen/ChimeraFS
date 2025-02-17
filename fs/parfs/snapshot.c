@@ -510,7 +510,7 @@ static int nova_append_snapshot_file_write_entry(struct super_block *sb,
 	}
 
 	NOVA_START_TIMING(append_snapshot_file_t, append_time);
-	nova_dbgv(
+	nova_dbg_verbose(
 		"Append file write entry: block %llu, %llu pages, delete epoch ID %llu to Snapshot epoch ID %llu\n",
 		nvmm, num_pages, delete_epoch_id, info->epoch_id);
 
@@ -559,7 +559,7 @@ static int nova_append_snapshot_inode_entry(struct super_block *sb,
 	}
 
 	NOVA_START_TIMING(append_snapshot_inode_t, append_time);
-	nova_dbgv(
+	nova_dbg_verbose(
 		"Append inode entry: inode %llu, delete epoch ID %llu to Snapshot epoch ID %llu\n",
 		pi->nova_ino, pi->delete_epoch_id, info->epoch_id);
 

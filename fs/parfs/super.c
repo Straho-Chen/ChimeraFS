@@ -477,7 +477,7 @@ static struct nova_inode *nova_init(struct super_block *sb, unsigned long size)
 	NOVA_START_TIMING(new_init_t, init_time);
 	nova_info("creating an empty nova of size %lu\n", size);
 
-	nova_dbgv("nova: Default block size set to 4K\n");
+	nova_dbg_verbose("nova: Default block size set to 4K\n");
 	sbi->blocksize = blocksize = NOVA_DEF_BLOCK_SIZE_4K;
 	nova_set_blocksize(sb, sbi->blocksize);
 
@@ -486,7 +486,7 @@ static struct nova_inode *nova_init(struct super_block *sb, unsigned long size)
 		return ERR_PTR(-EINVAL);
 	}
 
-	nova_dbgv("max file name len %d\n", (unsigned int)NOVA_NAME_LEN);
+	nova_dbg_verbose("max file name len %d\n", (unsigned int)NOVA_NAME_LEN);
 
 	super = nova_get_super(sb);
 
@@ -532,7 +532,7 @@ static struct nova_inode *nova_init(struct super_block *sb, unsigned long size)
 	nova_sync_super(sb);
 
 	root_i = nova_get_inode_by_ino(sb, NOVA_ROOT_INO);
-	nova_dbgv("%s: Allocate root inode @ 0x%p\n", __func__, root_i);
+	nova_dbg_verbose("%s: Allocate root inode @ 0x%p\n", __func__, root_i);
 
 	nova_memunlock_inode(sb, root_i, &irq_flags);
 	root_i->i_mode = cpu_to_le16(sbi->mode | S_IFDIR);
@@ -1038,8 +1038,8 @@ static void nova_put_super(struct super_block *sb)
 
 	for (i = 0; i < sbi->cpus; i++) {
 		inode_map = &sbi->inode_maps[i];
-		nova_dbgv("CPU %d: inode allocated %d, freed %d\n", i,
-			  inode_map->allocated, inode_map->freed);
+		nova_dbg_verbose("CPU %d: inode allocated %d, freed %d\n", i,
+				 inode_map->allocated, inode_map->freed);
 	}
 
 	kfree(sbi->inode_maps);
@@ -1142,7 +1142,7 @@ static void nova_i_callback(struct rcu_head *head)
 
 static void nova_destroy_inode(struct inode *inode)
 {
-	nova_dbgv("%s: %lu\n", __func__, inode->i_ino);
+	nova_dbg_verbose("%s: %lu\n", __func__, inode->i_ino);
 	call_rcu(&inode->i_rcu, nova_i_callback);
 }
 

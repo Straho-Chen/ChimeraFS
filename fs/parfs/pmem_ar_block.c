@@ -186,3 +186,22 @@ int pmem_ar_out_range(void *p, unsigned long len)
 
 	return ret;
 }
+
+int pmem_ar_addr_invaild(void *p)
+{
+	int i, ret = 1;
+
+	if (p == NULL)
+		return ret;
+
+	for (i = 0; i < pmem_ar_dev.elem_num; i++) {
+		if (p >= (void *)pmem_ar_dev.start_virt_addr[i] &&
+		    p < (void *)(pmem_ar_dev.start_virt_addr[i] +
+				 pmem_ar_dev.size_in_bytes[i])) {
+			ret = 0;
+			break;
+		}
+	}
+
+	return ret;
+}

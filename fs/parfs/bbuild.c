@@ -385,8 +385,8 @@ static u64 nova_append_range_node_entry(struct super_block *sb,
 		entry->range_low |= cpu_to_le64(cpuid << 56);
 	entry->range_high = cpu_to_le64(curr->range_high);
 	nova_memlock_range(sb, entry, size, &irq_flags);
-	nova_dbgv("append entry block low 0x%lx, high 0x%lx\n", curr->range_low,
-		  curr->range_high);
+	nova_dbg_verbose("append entry block low 0x%lx, high 0x%lx\n",
+			 curr->range_low, curr->range_high);
 
 	nova_flush_buffer(entry, sizeof(struct nova_range_node_lowhigh), 0);
 out:
@@ -502,7 +502,7 @@ void nova_save_blocknode_mappings_to_log(struct super_block *sb)
 		for (j = 0; j < sbi->sockets; j++) {
 			free_list = nova_get_free_list(sb, i, j);
 			num_blocknode += free_list->num_blocknode;
-			nova_dbgv(
+			nova_dbg_verbose(
 				"%s: free list, cpu %d, socket %d: %lu nodes\n",
 				__func__, i, j, free_list->num_blocknode);
 		}
@@ -549,8 +549,8 @@ static int nova_insert_blocknode_map(struct super_block *sb, int cpuid,
 	int ret;
 
 	num_blocks = high - low + 1;
-	nova_dbgv("%s: cpu %d, low %lu, high %lu, num %lu\n", __func__, cpuid,
-		  low, high, num_blocks);
+	nova_dbg_verbose("%s: cpu %d, low %lu, high %lu, num %lu\n", __func__,
+			 cpuid, low, high, num_blocks);
 	free_list = nova_get_free_list(sb, cpuid, socket);
 	tree = &(free_list->block_free_tree);
 
@@ -1166,8 +1166,8 @@ static int nova_recover_inode_pages(struct super_block *sb,
 	sih->i_mode = __le16_to_cpu(pi->i_mode);
 	sih->ino = nova_ino;
 
-	nova_dbgv("%s: inode %lu, head 0x%llx, tail 0x%llx\n", __func__,
-		  nova_ino, pi->log_head, pi->log_tail);
+	nova_dbg_verbose("%s: inode %lu, head 0x%llx, tail 0x%llx\n", __func__,
+			 nova_ino, pi->log_head, pi->log_tail);
 
 	switch (__le16_to_cpu(pi->i_mode) & S_IFMT) {
 	case S_IFDIR:
@@ -1572,7 +1572,7 @@ int nova_recovery(struct super_block *sb)
 	INIT_TIMING(start);
 	INIT_TIMING(end);
 
-	nova_dbgv("%s\n", __func__);
+	nova_dbg_verbose("%s\n", __func__);
 
 	/* Always check recovery time */
 	if (measure_timing == 0)

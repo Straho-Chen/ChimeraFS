@@ -332,8 +332,8 @@ u64 nova_create_inode_transaction(struct super_block *sb, struct inode *inode,
 	pair->journal_tail = temp;
 	nova_flush_buffer(&pair->journal_head, CACHELINE_SIZE, 1);
 
-	nova_dbgv("%s: head 0x%llx, tail 0x%llx\n", __func__,
-		  pair->journal_head, pair->journal_tail);
+	nova_dbg_verbose("%s: head 0x%llx, tail 0x%llx\n", __func__,
+			 pair->journal_head, pair->journal_tail);
 	return temp;
 }
 
@@ -381,8 +381,8 @@ u64 nova_create_rename_transaction(
 	pair->journal_tail = temp;
 	nova_flush_buffer(&pair->journal_head, CACHELINE_SIZE, 1);
 
-	nova_dbgv("%s: head 0x%llx, tail 0x%llx\n", __func__,
-		  pair->journal_head, pair->journal_tail);
+	nova_dbg_verbose("%s: head 0x%llx, tail 0x%llx\n", __func__,
+			 pair->journal_head, pair->journal_tail);
 	return temp;
 }
 
@@ -412,8 +412,8 @@ u64 nova_create_logentry_transaction(struct super_block *sb, void *entry,
 	pair->journal_tail = temp;
 	nova_flush_buffer(&pair->journal_head, CACHELINE_SIZE, 1);
 
-	nova_dbgv("%s: head 0x%llx, tail 0x%llx\n", __func__,
-		  pair->journal_head, pair->journal_tail);
+	nova_dbg_verbose("%s: head 0x%llx, tail 0x%llx\n", __func__,
+			 pair->journal_head, pair->journal_tail);
 	return temp;
 }
 

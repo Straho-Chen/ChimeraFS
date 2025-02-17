@@ -28,14 +28,19 @@
 static inline int nova_range_check(struct super_block *sb, void *p,
 				   unsigned long len)
 {
-	// TODO: multi pmem range check sounds too slow.
-	if (pmem_ar_out_range(p, len)) {
-		nova_err(sb,
-			 "access pmem out of range:"
-			 "access range 0x%lx - 0x%lx\n",
-			 (unsigned long)p, (unsigned long)(p + len));
-		dump_stack();
-		return -EINVAL;
+	/*
+	 * It seems that we can make sure the address is valid.
+	 * So we make the check to be enable when debugging.
+	 */
+	if (nova_dbgmask) {
+		if (pmem_ar_out_range(p, len)) {
+			nova_err(sb,
+				 "access pmem out of range:"
+				 "access range 0x%lx - 0x%lx\n",
+				 (unsigned long)p, (unsigned long)(p + len));
+			dump_stack();
+			return -EINVAL;
+		}
 	}
 
 	return 0;

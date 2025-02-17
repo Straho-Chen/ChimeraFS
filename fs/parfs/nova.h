@@ -237,8 +237,15 @@ static inline int nova_get_reference(struct super_block *sb, u64 block,
 
 static inline u64 nova_get_addr_off(struct nova_sb_info *sbi, void *addr)
 {
-	NOVA_ASSERT((addr >= sbi->virt_addr) &&
-		    (addr < (sbi->virt_addr + sbi->initsize)));
+	/*
+	 * It seems that we can make sure the address is valid.
+	 * So we make the check to be enable when debugging.
+	 */
+	if (nova_dbgmask) {
+		if (pmem_ar_addr_invaild(addr)) {
+			nova_err(sbi->sb, "Invalid address %p\n", addr);
+		}
+	}
 	return (u64)(addr - sbi->virt_addr);
 }
 
@@ -802,13 +809,17 @@ static inline void *nova_get_data_csum_addr(struct super_block *sb, u64 strp_nr,
 	blocknr = strp_nr >> BLOCK_SHIFT;
 	nova_block_to_cpu_socket(sbi, blocknr, &cpu, &socket);
 
+	nova_dbg_verbose("%s: blocknr: %#lx, locate on cpu: %d socket: %d\n",
+			 __func__, blocknr, cpu, socket);
+
 	if (cpu >= sbi->cpus) {
 		nova_dbg("%s: Invalid blocknr %lu\n", __func__, blocknr);
 		return NULL;
 	}
 
-	// TODO: check whether we should use per_list_blocks here, or per_list_blocks=?
-	strp_nr -= (cpu * socket * sbi->per_list_blocks) << BLOCK_SHIFT;
+	strp_nr -= (sbi->block_info[socket].start_block +
+		    cpu * sbi->per_list_blocks)
+		   << BLOCK_SHIFT;
 	free_list = nova_get_free_list(sb, cpu, socket);
 	if (replica == 0)
 		blockoff = free_list->csum_start << PAGE_SHIFT;

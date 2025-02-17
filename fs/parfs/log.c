@@ -166,7 +166,8 @@ unsigned int nova_free_old_entry(struct super_block *sb,
 		nova_invalidate_write_entry(sb, entry, 1, num_free);
 	}
 
-	nova_dbgv("%s: pgoff %lu, free %u blocks\n", __func__, pgoff, num_free);
+	nova_dbg_verbose("%s: pgoff %lu, free %u blocks\n", __func__, pgoff,
+			 num_free);
 	nova_free_data_blocks(sb, sih, old_nvmm, num_free);
 
 out:
@@ -619,8 +620,8 @@ static int nova_inplace_update_setattr_entry(struct super_block *sb,
 	struct nova_log_entry_info entry_info;
 	u64 last_log = 0;
 
-	nova_dbgv("%s : Modifying last log entry for inode %lu\n", __func__,
-		  inode->i_ino);
+	nova_dbg_verbose("%s : Modifying last log entry for inode %lu\n",
+			 __func__, inode->i_ino);
 	last_log = sih->last_setattr;
 	entry = (struct nova_setattr_logentry *)nova_get_block(sb, last_log);
 
@@ -659,8 +660,9 @@ int nova_handle_setattr_operation(struct super_block *sb, struct inode *inode,
 						  epoch_id);
 	} else {
 		/* We are holding inode lock so OK to append the log */
-		nova_dbgv("%s : Appending last log entry for inode ino = %lu\n",
-			  __func__, inode->i_ino);
+		nova_dbg_verbose(
+			"%s : Appending last log entry for inode ino = %lu\n",
+			__func__, inode->i_ino);
 		update.tail = update.alter_tail = 0;
 		ret = nova_append_setattr_entry(sb, pi, inode, attr, &update,
 						&last_setattr, epoch_id);
@@ -1237,7 +1239,8 @@ static u64 nova_extend_inode_log(struct super_block *sb, struct nova_inode *pi,
 	int ret;
 	unsigned long irq_flags = 0;
 
-	nova_dbgv("%s: inode %lu, curr 0x%llx\n", __func__, sih->ino, curr_p);
+	nova_dbg_verbose("%s: inode %lu, curr 0x%llx\n", __func__, sih->ino,
+			 curr_p);
 
 	if (curr_p == 0) {
 		ret = nova_initialize_inode_log(sb, pi, sih, MAIN_LOG);

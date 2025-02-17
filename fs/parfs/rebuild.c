@@ -186,7 +186,7 @@ static int nova_reset_csum_parity_page(struct super_block *sb,
 				       struct nova_file_write_entry *entry,
 				       unsigned long pgoff, int zero)
 {
-	nova_dbgv("%s: update page off %lu\n", __func__, pgoff);
+	nova_dbg_verbose("%s: update page off %lu\n", __func__, pgoff);
 
 	if (data_csum)
 		nova_update_pgoff_csum(sb, sih, entry, pgoff, zero);
@@ -293,7 +293,8 @@ int nova_reset_mapping_csum_parity(struct super_block *sb, struct inode *inode,
 		return 0;
 
 	NOVA_START_TIMING(reset_mapping_t, reset_time);
-	nova_dbgv("%s: pgoff %lu to %lu\n", __func__, start_pgoff, end_pgoff);
+	nova_dbg_verbose("%s: pgoff %lu to %lu\n", __func__, start_pgoff,
+			 end_pgoff);
 
 	while (!done) {
 		fbatch.nr = filemap_get_folios(mapping, &start_pgoff, end_pgoff,
@@ -324,8 +325,9 @@ int nova_reset_mapping_csum_parity(struct super_block *sb, struct inode *inode,
 	}
 
 	if (count)
-		nova_dbgv("%s: inode %lu, reset %d pages, start pgoff %lu\n",
-			  __func__, sih->ino, count, start);
+		nova_dbg_verbose(
+			"%s: inode %lu, reset %d pages, start pgoff %lu\n",
+			__func__, sih->ino, count, start);
 
 	NOVA_END_TIMING(reset_mapping_t, reset_time);
 	return 0;
@@ -350,8 +352,8 @@ int nova_reset_vma_csum_parity(struct super_block *sb, struct vma_item *item)
 	start_index = vma->vm_pgoff;
 	end_index = vma->vm_pgoff + num_pages;
 
-	nova_dbgv("%s: inode %lu, pgoff %lu - %lu\n", __func__, inode->i_ino,
-		  start_index, end_index);
+	nova_dbg_verbose("%s: inode %lu, pgoff %lu - %lu\n", __func__,
+			 inode->i_ino, start_index, end_index);
 
 	ret = nova_reset_mapping_csum_parity(sb, inode, mapping, start_index,
 					     end_index);
@@ -576,7 +578,7 @@ static int nova_rebuild_handle_dentry(struct super_block *sb,
 {
 	int ret = 0;
 
-	nova_dbgv(
+	nova_dbg_verbose(
 		"curr_p: 0x%llx, type %d, ino %llu, name %s, namelen %u, csum 0x%x, rec len %u\n",
 		curr_p, entry->entry_type, le64_to_cpu(entry->ino), entry->name,
 		entry->name_len, entry->csum, le16_to_cpu(entry->de_len));
@@ -621,7 +623,7 @@ int nova_rebuild_dir_inode_tree(struct super_block *sb, struct nova_inode *pi,
 	int ret;
 
 	NOVA_START_TIMING(rebuild_dir_t, rebuild_time);
-	nova_dbgv("Rebuild dir %llu tree\n", ino);
+	nova_dbg_verbose("Rebuild dir %llu tree\n", ino);
 
 	reb = &rebuild;
 	ret = nova_rebuild_inode_start(sb, pi, sih, reb, pi_addr);
@@ -741,7 +743,7 @@ int nova_rebuild_inode(struct super_block *sb, struct nova_inode_info *si,
 		return -ESTALE;
 	}
 
-	nova_dbgv(
+	nova_dbg_verbose(
 		"%s: inode %llu, addr 0x%llx, valid %d, head 0x%llx, tail 0x%llx\n",
 		__func__, ino, pi_addr, pi->valid, pi->log_head, pi->log_tail);
 

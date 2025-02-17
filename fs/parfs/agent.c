@@ -182,15 +182,17 @@ static void do_read_request(struct mm_struct *mm, unsigned long kaddr,
 	if (tasks_index <= 0)
 		goto out;
 
-	nova_dbg("kaddr: %lx, uaddr: %lx, bytes: %ld", kaddr, uaddr, bytes);
+	nova_dbg_delegation("kaddr: %lx, uaddr: %lx, bytes: %ld", kaddr, uaddr,
+			    bytes);
 
 	NOVA_START_TIMING(agent_memcpy_r_t, memcpy_time);
 	for (i = 0; i < tasks_index; i++) {
 		if (zero) {
 			memset((void *)tasks[i].kuaddr, 0, tasks[i].size);
 		} else {
-			nova_dbg("uaddr: %lx, size: %ld, kaddr: %lx\n",
-				 tasks[i].kuaddr, tasks[i].size, kaddr);
+			nova_dbg_delegation(
+				"uaddr: %lx, size: %ld, kaddr: %lx\n",
+				tasks[i].kuaddr, tasks[i].size, kaddr);
 
 			memcpy((void *)tasks[i].kuaddr, (void *)kaddr,
 			       tasks[i].size);
@@ -226,8 +228,8 @@ static void do_write_request(struct mm_struct *mm, unsigned long kaddr,
 	INIT_TIMING(memcpy_time);
 
 	if (zero) {
-		nova_dbg_verbose("%s: zero flush_cache:%d\n", __func__,
-				 flush_cache);
+		nova_dbg_delegation("%s: zero, flush_cache:%d\n", __func__,
+				    flush_cache);
 		NOVA_START_TIMING(agent_memcpy_w_t, memcpy_time);
 		if (flush_cache)
 			memset_nt((void *)kaddr, 0, bytes);
@@ -245,11 +247,12 @@ static void do_write_request(struct mm_struct *mm, unsigned long kaddr,
 	if (tasks_index <= 0)
 		goto out;
 
-	nova_dbg("kaddr: %lx, uaddr: %lx, bytes: %ld", kaddr, uaddr, bytes);
+	nova_dbg_delegation("kaddr: %lx, uaddr: %lx, bytes: %ld", kaddr, uaddr,
+			    bytes);
 
 	NOVA_START_TIMING(agent_memcpy_w_t, memcpy_time);
 	for (i = 0; i < tasks_index; i++) {
-		nova_dbg("uaddr: %lx, size: %ld, kaddr: %lx\n", tasks[i].kuaddr,
+		nova_dbg_delegation("uaddr: %lx, size: %ld, kaddr: %lx\n", tasks[i].kuaddr,
 			 tasks[i].size, kaddr);
 
 #if NOVA_NT_STORE
@@ -460,7 +463,7 @@ void nova_agents_fini(void)
 		if (nova_agent_tasks[i]) {
 			int ret;
 			if ((ret = kthread_stop(nova_agent_tasks[i])))
-				nova_dbg(
+				nova_info(
 					"kthread_stop task returned error %d\n",
 					ret);
 		}

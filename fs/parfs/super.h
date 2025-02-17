@@ -178,7 +178,7 @@ struct nova_sb_info {
 	/* Decide new inode map id */
 	unsigned long map_id;
 
-	/* Per-CPU free block list */
+	/* per cpu and per socket free block list */
 	struct free_list *free_lists;
 	unsigned long per_list_blocks;
 };

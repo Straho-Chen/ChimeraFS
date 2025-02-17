@@ -80,8 +80,9 @@ static int nova_update_dax_mapping(struct super_block *sb,
 			value = (unsigned long)radix_tree_deref_slot(pentry);
 			/* 9 = sector shift (3) + RADIX_DAX_SHIFT (6) */
 			new_value = (blocknr << 9) | (value & 0xff);
-			nova_dbgv("%s: pgoff %lu, entry 0x%lx, new 0x%lx\n",
-				  __func__, curr_pgoff, value, new_value);
+			nova_dbg_verbose(
+				"%s: pgoff %lu, entry 0x%lx, new 0x%lx\n",
+				__func__, curr_pgoff, value, new_value);
 			radix_tree_replace_slot(&sih->tree, pentry,
 						(void *)new_value);
 			radix_tree_tag_set(&mapping->i_pages, curr_pgoff,
@@ -116,7 +117,7 @@ static int nova_update_entry_pfn(struct super_block *sb,
 	pfn = nova_get_pfn(sb, entry->block) + start_pgoff - entry->pgoff;
 	size = num_pages << PAGE_SHIFT;
 
-	nova_dbgv("%s: addr 0x%lx, size 0x%lx\n", __func__, addr, size);
+	nova_dbg_verbose("%s: addr 0x%lx, size 0x%lx\n", __func__, addr, size);
 
 	newflags = vma->vm_flags | VM_WRITE;
 	new_prot = vm_get_page_prot(newflags);
@@ -234,8 +235,8 @@ static int nova_get_dax_cow_range(struct super_block *sb,
 	*num_blocks = (base > vma_blocks - start_pgoff) ?
 			      vma_blocks - start_pgoff :
 			      base;
-	nova_dbgv("%s: start block %lu, %d blocks\n", __func__, *start_blk,
-		  *num_blocks);
+	nova_dbg_verbose("%s: start block %lu, %d blocks\n", __func__,
+			 *start_blk, *num_blocks);
 	return 0;
 }
 
@@ -295,8 +296,8 @@ int nova_mmap_to_new_blocks(struct vm_area_struct *vma, unsigned long address)
 
 	pi = nova_get_inode(sb, inode);
 
-	nova_dbgv("%s: inode %lu, start pgoff %lu, end pgoff %lu\n", __func__,
-		  inode->i_ino, start_blk, end_blk);
+	nova_dbg_verbose("%s: inode %lu, start pgoff %lu, end pgoff %lu\n",
+			 __func__, inode->i_ino, start_blk, end_blk);
 
 	time = current_time(inode).tv_sec;
 
@@ -309,8 +310,8 @@ int nova_mmap_to_new_blocks(struct vm_area_struct *vma, unsigned long address)
 	while (start_blk < end_blk) {
 		entry = nova_get_write_entry(sb, sih, start_blk);
 		if (!entry) {
-			nova_dbgv("%s: Found hole: pgoff %lu\n", __func__,
-				  start_blk);
+			nova_dbg_verbose("%s: Found hole: pgoff %lu\n",
+					 __func__, start_blk);
 
 			/* Jump the hole */
 			entry = nova_find_next_entry(sb, sih, start_blk);
@@ -355,8 +356,8 @@ int nova_mmap_to_new_blocks(struct vm_area_struct *vma, unsigned long address)
 						 avail_blocks, ALLOC_NO_INIT,
 						 ANY_CPU, ALLOC_FROM_HEAD);
 
-		nova_dbgv("%s: alloc %d blocks @ %lu\n", __func__, allocated,
-			  blocknr);
+		nova_dbg_verbose("%s: alloc %d blocks @ %lu\n", __func__,
+				 allocated, blocknr);
 
 		if (allocated <= 0) {
 			nova_dbg("%s alloc blocks failed!, %d\n", __func__,
@@ -449,8 +450,8 @@ static int nova_set_vma_read(struct vm_area_struct *vma)
 	if (oldflags == newflags)
 		goto out;
 
-	nova_dbgv("Set vma %p read, start 0x%lx, end 0x%lx\n", vma,
-		  vma->vm_start, vma->vm_end);
+	nova_dbg_verbose("Set vma %p read, start 0x%lx, end 0x%lx\n", vma,
+			 vma->vm_start, vma->vm_end);
 
 	vm_flags_set(vma, newflags);
 
@@ -520,7 +521,7 @@ int nova_set_vmas_readonly(struct super_block *sb)
 	struct nova_sb_info *sbi = NOVA_SB(sb);
 	struct nova_inode_info_header *sih;
 
-	nova_dbgv("%s\n", __func__);
+	nova_dbg_verbose("%s\n", __func__);
 	mutex_lock(&sbi->vma_mutex);
 	list_for_each_entry(sih, &sbi->mmap_sih_list, list)
 		nova_set_sih_vmas_readonly(sih);
@@ -536,7 +537,7 @@ int nova_destroy_vma_tree(struct super_block *sb)
 	struct vma_item *item;
 	struct rb_node *temp;
 
-	nova_dbgv("%s\n", __func__);
+	nova_dbg_verbose("%s\n", __func__);
 	mutex_lock(&sbi->vma_mutex);
 	temp = rb_first(&sbi->vma_tree);
 	while (temp) {

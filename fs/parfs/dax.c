@@ -655,8 +655,9 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 
 	epoch_id = nova_get_epoch_id(sb);
 
-	nova_dbgv("%s: epoch_id %llu, inode %lu, offset %lld, count %lu\n",
-		  __func__, epoch_id, inode->i_ino, pos, count);
+	nova_dbg_verbose(
+		"%s: epoch_id %llu, inode %lu, offset %lld, count %lu\n",
+		__func__, epoch_id, inode->i_ino, pos, count);
 	update.tail = sih->log_tail;
 	update.alter_tail = sih->alter_log_tail;
 	while (num_blocks > 0) {
@@ -767,7 +768,7 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 							&entry_info);
 		}
 
-		nova_dbgv("Write: %p, %lu\n", kmem, copied);
+		nova_dbg_verbose("Write: %p, %lu\n", kmem, copied);
 		if (copied > 0) {
 			status = copied;
 			written += copied;
@@ -813,7 +814,7 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 
 	ret = written;
 	NOVA_STATS_ADD(inplace_write_breaks, step);
-	nova_dbgv("blocks: %lu, %lu\n", inode->i_blocks, sih->i_blocks);
+	nova_dbg_verbose("blocks: %lu, %lu\n", inode->i_blocks, sih->i_blocks);
 
 	*ppos = pos;
 	if (pos > inode->i_size) {
@@ -931,8 +932,8 @@ static int nova_dax_get_blocks(struct inode *inode, sector_t iblock,
 
 	NOVA_START_TIMING(dax_get_block_t, get_block_time);
 
-	nova_dbgv("%s: pgoff %lu, num %lu, create %d\n", __func__, iblock,
-		  max_blocks, create);
+	nova_dbg_verbose("%s: pgoff %lu, num %lu, create %d\n", __func__,
+			 iblock, max_blocks, create);
 
 	epoch_id = nova_get_epoch_id(sb);
 
@@ -949,8 +950,8 @@ again:
 	if (entry) {
 		if (create == 0 || inplace) {
 			nvmm = get_nvmm(sb, sih, entryc, iblock);
-			nova_dbgv("%s: found pgoff %lu, block %lu\n", __func__,
-				  iblock, nvmm);
+			nova_dbg_verbose("%s: found pgoff %lu, block %lu\n",
+					 __func__, iblock, nvmm);
 			goto out;
 		}
 	}
@@ -979,7 +980,8 @@ again:
 					 ALLOC_INIT_ZERO, ANY_CPU,
 					 ALLOC_FROM_HEAD);
 	if (allocated <= 0) {
-		nova_dbgv("%s alloc blocks failed %d\n", __func__, allocated);
+		nova_dbg_verbose("%s alloc blocks failed %d\n", __func__,
+				 allocated);
 		ret = allocated;
 		goto out;
 	}
@@ -991,7 +993,7 @@ again:
 
 	ret = nova_append_file_write_entry(sb, pi, inode, &entry_data, &update);
 	if (ret) {
-		nova_dbgv("%s: append inode entry failed\n", __func__);
+		nova_dbg_verbose("%s: append inode entry failed\n", __func__);
 		ret = -ENOSPC;
 		goto out;
 	}
@@ -1006,8 +1008,8 @@ again:
 
 	ret = nova_reassign_file_tree(sb, sih, update.curr_entry);
 	if (ret) {
-		nova_dbgv("%s: nova_reassign_file_tree failed: %d\n", __func__,
-			  ret);
+		nova_dbg_verbose("%s: nova_reassign_file_tree failed: %d\n",
+				 __func__, ret);
 		goto out;
 	}
 	inode->i_blocks = sih->i_blocks;
@@ -1049,7 +1051,8 @@ int nova_iomap_begin(struct inode *inode, loff_t offset, loff_t length,
 	ret = nova_dax_get_blocks(inode, first_block, max_blocks, &bno, &new,
 				  &boundary, flags & IOMAP_WRITE, taking_lock);
 	if (ret < 0) {
-		nova_dbgv("%s: nova_dax_get_blocks failed %d", __func__, ret);
+		nova_dbg_verbose("%s: nova_dax_get_blocks failed %d", __func__,
+				 ret);
 		return ret;
 	}
 
@@ -1108,8 +1111,8 @@ static vm_fault_t nova_dax_huge_fault(struct vm_fault *vmf, unsigned int order)
 
 	NOVA_START_TIMING(pmd_fault_t, fault_time);
 
-	nova_dbgv("%s: inode %lu, pgoff %lu\n", __func__, inode->i_ino,
-		  vmf->pgoff);
+	nova_dbg_verbose("%s: inode %lu, pgoff %lu\n", __func__, inode->i_ino,
+			 vmf->pgoff);
 
 	if (vmf->flags & FAULT_FLAG_WRITE)
 		file_update_time(vmf->vma->vm_file);
@@ -1125,8 +1128,8 @@ static vm_fault_t nova_dax_fault(struct vm_fault *vmf)
 	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
 	struct inode *inode = mapping->host;
 
-	nova_dbgv("%s: inode %lu, pgoff %lu, flags 0x%x\n", __func__,
-		  inode->i_ino, vmf->pgoff, vmf->flags);
+	nova_dbg_verbose("%s: inode %lu, pgoff %lu, flags 0x%x\n", __func__,
+			 inode->i_ino, vmf->pgoff, vmf->flags);
 
 	return nova_dax_huge_fault(vmf, 0);
 }
@@ -1136,8 +1139,8 @@ static vm_fault_t nova_dax_pfn_mkwrite(struct vm_fault *vmf)
 	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
 	struct inode *inode = mapping->host;
 
-	nova_dbgv("%s: inode %lu, pgoff %lu, flags 0x%x\n", __func__,
-		  inode->i_ino, vmf->pgoff, vmf->flags);
+	nova_dbg_verbose("%s: inode %lu, pgoff %lu, flags 0x%x\n", __func__,
+			 inode->i_ino, vmf->pgoff, vmf->flags);
 
 	return nova_dax_huge_fault(vmf, 0);
 }
@@ -1182,7 +1185,7 @@ static int nova_append_write_mmap_to_log(struct super_block *sb,
 	data.num_pages = cpu_to_le64(num_pages);
 	data.invalid = 0;
 
-	nova_dbgv(
+	nova_dbg_verbose(
 		"%s : Appending mmap log entry for inode %lu, pgoff %llu, %llu pages\n",
 		__func__, inode->i_ino, data.pgoff, data.num_pages);
 
@@ -1228,7 +1231,7 @@ int nova_insert_write_vma(struct vm_area_struct *vma)
 
 	item->vma = vma;
 
-	nova_dbgv(
+	nova_dbg_verbose(
 		"Inode %lu insert vma %p, start 0x%lx, end 0x%lx, pgoff %lu\n",
 		inode->i_ino, vma, vma->vm_start, vma->vm_end, vma->vm_pgoff);
 
@@ -1323,7 +1326,7 @@ static int nova_remove_write_vma(struct vm_area_struct *vma)
 	inode_unlock(inode);
 
 	if (found) {
-		nova_dbgv(
+		nova_dbg_verbose(
 			"Inode %lu remove vma %p, start 0x%lx, end 0x%lx, pgoff %lu\n",
 			inode->i_ino, curr->vma, curr->vma->vm_start,
 			curr->vma->vm_end, curr->vma->vm_pgoff);
@@ -1349,7 +1352,7 @@ static int nova_restore_page_write(struct vm_area_struct *vma,
 
 	down_write(&mm->mmap_sem);
 
-	nova_dbgv("Restore vma %p write, start 0x%lx, end 0x%lx, address 0x%lx\n",
+	nova_dbg_verbose("Restore vma %p write, start 0x%lx, end 0x%lx, address 0x%lx\n",
 		  vma, vma->vm_start, vma->vm_end, address);
 
 	/* Restore single page write */
@@ -1378,10 +1381,10 @@ static void nova_vma_open(struct vm_area_struct *vma)
 
 static void nova_vma_close(struct vm_area_struct *vma)
 {
-	nova_dbgv("[%s:%d] MMAP 4KPAGE vm_start(0x%lx), vm_end(0x%lx), "
-		  "vm_flags(0x%lx), vm_page_prot(0x%lx)\n",
-		  __func__, __LINE__, vma->vm_start, vma->vm_end, vma->vm_flags,
-		  pgprot_val(vma->vm_page_prot));
+	nova_dbg_verbose("[%s:%d] MMAP 4KPAGE vm_start(0x%lx), vm_end(0x%lx), "
+			 "vm_flags(0x%lx), vm_page_prot(0x%lx)\n",
+			 __func__, __LINE__, vma->vm_start, vma->vm_end,
+			 vma->vm_flags, pgprot_val(vma->vm_page_prot));
 
 	//	vma->original_write = 0;
 	nova_remove_write_vma(vma);

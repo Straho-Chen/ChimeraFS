@@ -51,7 +51,7 @@ int nova_insert_dir_tree(struct super_block *sb,
 	int ret;
 
 	hash = BKDRHash(name, namelen);
-	nova_dbgv("%s: insert %s hash %lu\n", __func__, name, hash);
+	nova_dbg_verbose("%s: insert %s hash %lu\n", __func__, name, hash);
 
 	/* FIXME: hash collision ignored here */
 	node = nova_alloc_dir_node(sb);
@@ -147,7 +147,7 @@ void nova_delete_dir_tree(struct super_block *sb,
 
 	NOVA_START_TIMING(delete_dir_tree_t, delete_time);
 
-	nova_dbgv("%s: delete dir %lu\n", __func__, sih->ino);
+	nova_dbg_verbose("%s: delete dir %lu\n", __func__, sih->ino);
 	nova_destroy_range_node_tree(sb, &sih->rb_tree);
 	NOVA_END_TIMING(delete_dir_tree_t, delete_time);
 }
@@ -546,13 +546,13 @@ static int nova_readdir_slow_rbtree(struct file *file, struct dir_context *ctx)
 		}
 
 		child_pi = nova_get_block(sb, pi_addr);
-		nova_dbgv(
+		nova_dbg_verbose(
 			"ctx: ino %llu, name %s, name_len %u, de_len %u, csum 0x%x\n",
 			(u64)ino, entry->name, entry->name_len, entry->de_len,
 			entry->csum);
 		if (!dir_emit(ctx, entryc->name, entryc->name_len, ino,
 			      IF2DT(le16_to_cpu(child_pi->i_mode)))) {
-			nova_dbgv("Here: pos %llu\n", ctx->pos);
+			nova_dbg_verbose("Here: pos %llu\n", ctx->pos);
 			return 0;
 		}
 		temp = rb_next(temp);
@@ -619,8 +619,8 @@ static int nova_readdir_fast(struct file *file, struct dir_context *ctx)
 
 	NOVA_START_TIMING(readdir_t, readdir_time);
 	pidir = nova_get_inode(sb, inode);
-	nova_dbgv("%s: ino %llu, size %llu, pos 0x%llx\n", __func__,
-		  (u64)inode->i_ino, pidir->i_size, ctx->pos);
+	nova_dbg_verbose("%s: ino %llu, size %llu, pos 0x%llx\n", __func__,
+			 (u64)inode->i_ino, pidir->i_size, ctx->pos);
 
 	if (sih->log_head == 0) {
 		nova_err(sb, "Dir %lu log is NULL!\n", inode->i_ino);
@@ -671,7 +671,7 @@ static int nova_readdir_fast(struct file *file, struct dir_context *ctx)
 		}
 
 		entry = (struct nova_dentry *)nova_get_block(sb, curr_p);
-		nova_dbgv(
+		nova_dbg_verbose(
 			"curr_p: 0x%llx, type %d, ino %llu, name %s, namelen %u, rec len %u\n",
 			curr_p, entry->entry_type, le64_to_cpu(entry->ino),
 			entry->name, entry->name_len,
@@ -699,7 +699,7 @@ static int nova_readdir_fast(struct file *file, struct dir_context *ctx)
 			}
 
 			child_pi = nova_get_block(sb, pi_addr);
-			nova_dbgv(
+			nova_dbg_verbose(
 				"ctx: ino %llu, name %s, name_len %u, de_len %u\n",
 				(u64)ino, entry->name, entry->name_len,
 				entry->de_len);
@@ -708,7 +708,7 @@ static int nova_readdir_fast(struct file *file, struct dir_context *ctx)
 				      prev_entryc->name_len, ino,
 				      IF2DT(le16_to_cpu(
 					      prev_child_pi->i_mode)))) {
-				nova_dbgv("Here: pos %llu\n", ctx->pos);
+				nova_dbg_verbose("Here: pos %llu\n", ctx->pos);
 				return 0;
 			}
 			prev_entry = entry;
@@ -733,7 +733,7 @@ static int nova_readdir_fast(struct file *file, struct dir_context *ctx)
 	ctx->pos = READDIR_END;
 out:
 	NOVA_END_TIMING(readdir_t, readdir_time);
-	nova_dbgv("%s return\n", __func__);
+	nova_dbg_verbose("%s return\n", __func__);
 	return 0;
 }
 

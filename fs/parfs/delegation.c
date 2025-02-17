@@ -57,8 +57,9 @@ unsigned int nova_do_read_delegation(struct nova_sb_info *sbi,
 		if (i > uaddr + bytes - 1)
 			target_addr = uaddr + bytes - 1;
 
-		nova_dbg("uaddr: %lx, bytes: %ld, target_addr: %lx\n", uaddr,
-			 bytes, target_addr);
+		nova_dbg_delegation(
+			"uaddr: %lx, bytes: %ld, target_addr: %lx\n", uaddr,
+			bytes, target_addr);
 
 		ret = __clear_user((void *)target_addr, 1);
 
@@ -156,8 +157,9 @@ unsigned int nova_do_write_delegation(struct nova_sb_info *sbi,
 			if (i > uaddr + bytes - 1)
 				target_addr = uaddr + bytes - 1;
 
-			nova_dbg("uaddr: %lx, bytes: %ld, target_addr: %lx\n",
-				 uaddr, bytes, target_addr);
+			nova_dbg_delegation(
+				"uaddr: %lx, bytes: %ld, target_addr: %lx\n",
+				uaddr, bytes, target_addr);
 
 			ret = copy_from_user(&nova_no_optimize,
 					     (void *)target_addr, 1);

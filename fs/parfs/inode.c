@@ -89,7 +89,8 @@ static int nova_alloc_inode_table(struct super_block *sb,
 			sb, sih, &blocknr, 1, ALLOC_INIT_ZERO, i,
 			version ? ALLOC_FROM_TAIL : ALLOC_FROM_HEAD);
 
-		nova_dbgv("%s: allocate log @ 0x%lx\n", __func__, blocknr);
+		nova_dbg_verbose("%s: allocate log @ 0x%lx\n", __func__,
+				 blocknr);
 		if (allocated != 1 || blocknr == 0)
 			return -ENOSPC;
 
@@ -344,7 +345,7 @@ int nova_delete_file_tree(struct super_block *sb,
 		freed += num_free;
 	}
 
-	nova_dbgv(
+	nova_dbg_verbose(
 		"Inode %lu: delete file tree from pgoff %lu to %lu, %d blocks freed\n",
 		sih->ino, start_blocknr, last_blocknr, freed);
 
@@ -781,7 +782,7 @@ struct inode *nova_iget(struct super_block *sb, unsigned long ino)
 
 	si = NOVA_I(inode);
 
-	nova_dbgv("%s: inode %lu\n", __func__, ino);
+	nova_dbg_verbose("%s: inode %lu\n", __func__, ino);
 
 	err = nova_get_inode_address(sb, ino, 0, &pi_addr, 0, 0);
 	if (err) {
@@ -876,21 +877,21 @@ static int nova_free_inode_resource(struct super_block *sb,
 	switch (__le16_to_cpu(pi->i_mode) & S_IFMT) {
 	case S_IFREG:
 		last_blocknr = nova_get_last_blocknr(sb, sih);
-		nova_dbgv("%s: file ino %lu\n", __func__, sih->ino);
+		nova_dbg_verbose("%s: file ino %lu\n", __func__, sih->ino);
 		freed = nova_delete_file_tree(sb, sih, 0, last_blocknr, true,
 					      true, 0);
 		break;
 	case S_IFDIR:
-		nova_dbgv("%s: dir ino %lu\n", __func__, sih->ino);
+		nova_dbg_verbose("%s: dir ino %lu\n", __func__, sih->ino);
 		nova_delete_dir_tree(sb, sih);
 		break;
 	case S_IFLNK:
 		/* Log will be freed later */
-		nova_dbgv("%s: symlink ino %lu\n", __func__, sih->ino);
+		nova_dbg_verbose("%s: symlink ino %lu\n", __func__, sih->ino);
 		freed = nova_delete_file_tree(sb, sih, 0, 0, true, true, 0);
 		break;
 	default:
-		nova_dbgv("%s: special ino %lu\n", __func__, sih->ino);
+		nova_dbg_verbose("%s: special ino %lu\n", __func__, sih->ino);
 		break;
 	}
 
@@ -961,7 +962,8 @@ void nova_evict_inode(struct inode *inode)
 	}
 out:
 	if (destroy == 0) {
-		nova_dbgv("%s: destroying %lu\n", __func__, inode->i_ino);
+		nova_dbg_verbose("%s: destroying %lu\n", __func__,
+				 inode->i_ino);
 		nova_free_dram_resource(sb, sih);
 	}
 	/* TODO: Since we don't use page-cache, do we really need the following
@@ -1005,8 +1007,9 @@ int nova_delete_dead_inode(struct super_block *sb, u64 ino)
 	pi = (struct nova_inode *)nova_get_block(sb, pi_addr);
 	sih = &si.header;
 
-	nova_dbgv("Delete dead inode %lu, log head 0x%llx, tail 0x%llx\n",
-		  sih->ino, sih->log_head, sih->log_tail);
+	nova_dbg_verbose(
+		"Delete dead inode %lu, log head 0x%llx, tail 0x%llx\n",
+		sih->ino, sih->log_head, sih->log_tail);
 
 	return nova_free_inode_resource(sb, pi, sih);
 }
@@ -1246,8 +1249,8 @@ static void nova_setsize(struct inode *inode, loff_t oldsize, loff_t newsize,
 
 	inode_dio_wait(inode);
 
-	nova_dbgv("%s: inode %lu, old size %llu, new size %llu\n", __func__,
-		  inode->i_ino, oldsize, newsize);
+	nova_dbg_verbose("%s: inode %lu, old size %llu, new size %llu\n",
+			 __func__, inode->i_ino, oldsize, newsize);
 
 	if (newsize != oldsize) {
 		nova_clear_last_page_tail(sb, inode, newsize);

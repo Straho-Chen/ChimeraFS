@@ -191,7 +191,8 @@ static int nova_gc_assign_dentry(struct super_block *sb,
 	int ret = 0;
 
 	hash = BKDRHash(old_dentry->name, old_dentry->name_len);
-	nova_dbgv("%s: assign %s hash %lu\n", __func__, old_dentry->name, hash);
+	nova_dbg_verbose("%s: assign %s hash %lu\n", __func__, old_dentry->name,
+			 hash);
 
 	/* FIXME: hash collision ignored here */
 	found = nova_find_range_node(&sih->rb_tree, hash, NODE_DIR, &ret_node);
@@ -601,8 +602,8 @@ int nova_inode_log_fast_gc(struct super_block *sb, struct nova_inode *pi,
 	if (metadata_csum)
 		num_logs = 2;
 
-	nova_dbgv("%s: log head 0x%llx, tail 0x%llx\n", __func__, curr,
-		  curr_tail);
+	nova_dbg_verbose("%s: log head 0x%llx, tail 0x%llx\n", __func__, curr,
+			 curr_tail);
 	while (1) {
 		if (curr >> PAGE_SHIFT == sih->log_tail >> PAGE_SHIFT) {
 			/* Don't recycle tail page */
@@ -665,7 +666,8 @@ int nova_inode_log_fast_gc(struct super_block *sb, struct nova_inode *pi,
 	}
 
 	NOVA_STATS_ADD(fast_checked_pages, checked_pages);
-	nova_dbgv("checked pages %lu, freed %d\n", checked_pages, freed_pages);
+	nova_dbg_verbose("checked pages %lu, freed %d\n", checked_pages,
+			 freed_pages);
 	checked_pages -= freed_pages;
 
 	// TODO:  I think this belongs in nova_extend_inode_log.
@@ -709,8 +711,8 @@ int nova_inode_log_fast_gc(struct super_block *sb, struct nova_inode *pi,
 	nova_memlock_inode(sb, pi, &irq_flags);
 	sih->log_head = possible_head;
 	sih->alter_log_head = alter_possible_head;
-	nova_dbgv("%s: %d new head 0x%llx\n", __func__, found_head,
-		  possible_head);
+	nova_dbg_verbose("%s: %d new head 0x%llx\n", __func__, found_head,
+			 possible_head);
 	sih->log_pages += (num_pages - freed_pages) * num_logs;
 	/* Don't update log tail pointer here */
 	nova_flush_buffer(&pi->log_head, CACHELINE_SIZE, 1);
@@ -741,7 +743,7 @@ int nova_inode_log_fast_gc(struct super_block *sb, struct nova_inode *pi,
 		blocks++;
 
 	if (force_thorough || (blocks && blocks * 2 < checked_pages)) {
-		nova_dbgv(
+		nova_dbg_verbose(
 			"Thorough GC for inode %lu: checked pages %lu, valid pages %lu\n",
 			sih->ino, checked_pages, blocks);
 		blocks = nova_inode_log_thorough_gc(sb, pi, sih, blocks,

@@ -151,8 +151,9 @@ static int nova_create(struct mnt_idmap *idmap, struct inode *dir,
 	if (err)
 		goto out_err;
 
-	nova_dbgv("%s: %s\n", __func__, dentry->d_name.name);
-	nova_dbgv("%s: inode %llu, dir %lu\n", __func__, ino, dir->i_ino);
+	nova_dbg_verbose("%s: %s\n", __func__, dentry->d_name.name);
+	nova_dbg_verbose("%s: inode %llu, dir %lu\n", __func__, ino,
+			 dir->i_ino);
 	inode = nova_new_vfs_inode(idmap, TYPE_CREATE, dir, pi_addr, ino, mode,
 				   0, 0, &dentry->d_name, epoch_id);
 	if (IS_ERR(inode))
@@ -195,8 +196,9 @@ static int nova_mknod(struct mnt_idmap *idmap, struct inode *dir,
 	if (ino == 0)
 		goto out_err;
 
-	nova_dbgv("%s: %s\n", __func__, dentry->d_name.name);
-	nova_dbgv("%s: inode %llu, dir %lu\n", __func__, ino, dir->i_ino);
+	nova_dbg_verbose("%s: %s\n", __func__, dentry->d_name.name);
+	nova_dbg_verbose("%s: inode %llu, dir %lu\n", __func__, ino,
+			 dir->i_ino);
 
 	update.tail = 0;
 	update.alter_tail = 0;
@@ -251,9 +253,10 @@ static int nova_symlink(struct mnt_idmap *idmap, struct inode *dir,
 	if (ino == 0)
 		goto out_fail;
 
-	nova_dbgv("%s: name %s, symname %s\n", __func__, dentry->d_name.name,
-		  symname);
-	nova_dbgv("%s: inode %llu, dir %lu\n", __func__, ino, dir->i_ino);
+	nova_dbg_verbose("%s: name %s, symname %s\n", __func__,
+			 dentry->d_name.name, symname);
+	nova_dbg_verbose("%s: inode %llu, dir %lu\n", __func__, ino,
+			 dir->i_ino);
 
 	update.tail = 0;
 	update.alter_tail = 0;
@@ -367,10 +370,10 @@ static int nova_link(struct dentry *dest_dentry, struct inode *dir,
 	ihold(inode);
 	epoch_id = nova_get_epoch_id(sb);
 
-	nova_dbgv("%s: name %s, dest %s\n", __func__, dentry->d_name.name,
-		  dest_dentry->d_name.name);
-	nova_dbgv("%s: inode %lu, dir %lu\n", __func__, inode->i_ino,
-		  dir->i_ino);
+	nova_dbg_verbose("%s: name %s, dest %s\n", __func__,
+			 dentry->d_name.name, dest_dentry->d_name.name);
+	nova_dbg_verbose("%s: inode %lu, dir %lu\n", __func__, inode->i_ino,
+			 dir->i_ino);
 
 	update_dir.tail = 0;
 	update_dir.alter_tail = 0;
@@ -424,9 +427,9 @@ static int nova_unlink(struct inode *dir, struct dentry *dentry)
 		goto out;
 
 	epoch_id = nova_get_epoch_id(sb);
-	nova_dbgv("%s: %s\n", __func__, dentry->d_name.name);
-	nova_dbgv("%s: inode %lu, dir %lu\n", __func__, inode->i_ino,
-		  dir->i_ino);
+	nova_dbg_verbose("%s: %s\n", __func__, dentry->d_name.name);
+	nova_dbg_verbose("%s: inode %lu, dir %lu\n", __func__, inode->i_ino,
+			 dir->i_ino);
 
 	update_dir.tail = 0;
 	update_dir.alter_tail = 0;
@@ -489,9 +492,9 @@ static int nova_mkdir(struct mnt_idmap *idmap, struct inode *dir,
 		goto out_err;
 
 	epoch_id = nova_get_epoch_id(sb);
-	nova_dbgv("%s: name %s\n", __func__, dentry->d_name.name);
-	nova_dbgv("%s: inode %llu, dir %lu, link %d\n", __func__, ino,
-		  dir->i_ino, dir->i_nlink);
+	nova_dbg_verbose("%s: name %s\n", __func__, dentry->d_name.name);
+	nova_dbg_verbose("%s: inode %llu, dir %lu, link %d\n", __func__, ino,
+			 dir->i_ino, dir->i_nlink);
 
 	update.tail = 0;
 	update.alter_tail = 0;
@@ -592,7 +595,7 @@ static int nova_rmdir(struct inode *dir, struct dentry *dentry)
 	if (!inode)
 		return -ENOENT;
 
-	nova_dbgv("%s: name %s\n", __func__, dentry->d_name.name);
+	nova_dbg_verbose("%s: name %s\n", __func__, dentry->d_name.name);
 	pidir = nova_get_inode(sb, dir);
 	if (!pidir)
 		return -EINVAL;
@@ -603,8 +606,8 @@ static int nova_rmdir(struct inode *dir, struct dentry *dentry)
 	if (!nova_empty_dir(inode))
 		return err;
 
-	nova_dbgv("%s: inode %lu, dir %lu, link %d\n", __func__, inode->i_ino,
-		  dir->i_ino, dir->i_nlink);
+	nova_dbg_verbose("%s: inode %lu, dir %lu, link %d\n", __func__,
+			 inode->i_ino, dir->i_ino, dir->i_nlink);
 
 	if (inode->i_nlink != 2)
 		nova_dbg("empty directory %lu has nlink!=2 (%d), dir %lu",
@@ -678,12 +681,13 @@ static int nova_rename(struct mnt_idmap *idmap, struct inode *old_dir,
 	unsigned long irq_flags = 0;
 	INIT_TIMING(rename_time);
 
-	nova_dbgv("%s: rename %s to %s,\n", __func__, old_dentry->d_name.name,
-		  new_dentry->d_name.name);
-	nova_dbgv("%s: %s inode %lu, old dir %lu, new dir %lu, new inode %lu\n",
-		  __func__, S_ISDIR(old_inode->i_mode) ? "dir" : "normal",
-		  old_inode->i_ino, old_dir->i_ino, new_dir->i_ino,
-		  new_inode ? new_inode->i_ino : 0);
+	nova_dbg_verbose("%s: rename %s to %s,\n", __func__,
+			 old_dentry->d_name.name, new_dentry->d_name.name);
+	nova_dbg_verbose(
+		"%s: %s inode %lu, old dir %lu, new dir %lu, new inode %lu\n",
+		__func__, S_ISDIR(old_inode->i_mode) ? "dir" : "normal",
+		old_inode->i_ino, old_dir->i_ino, new_dir->i_ino,
+		new_inode ? new_inode->i_ino : 0);
 
 	if (flags & ~RENAME_NOREPLACE)
 		return -EINVAL;
