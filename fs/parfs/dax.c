@@ -36,9 +36,9 @@ static inline int nova_copy_partial_block(struct super_block *sb,
 	ptr = nova_get_block(sb, (nvmm << PAGE_SHIFT));
 
 	if (ptr != NULL) {
-		do_nova_nvmm_write(sb, kmem + offset, ptr + offset, length,
-				   length, 0, support_clwb, 0, issued_cnt,
-				   completed_cnt);
+		do_nova_nvmm_write(sb, kmem + offset, ptr + offset, length, 0,
+				   support_clwb, 0, issued_cnt, completed_cnt,
+				   0);
 	}
 
 	/* TODO: If rc < 0, go to MCE data recovery. */
@@ -59,8 +59,9 @@ static inline int nova_handle_partial_block(struct super_block *sb,
 	nova_memunlock_block(sb, kmem, &irq_flags);
 	if (entry == NULL) {
 		/* Fill zero */
-		do_nova_nvmm_write(sb, kmem + offset, NULL, length, length, 1,
-				   support_clwb, 0, issued_cnt, completed_cnt);
+		do_nova_nvmm_write(sb, kmem + offset, NULL, length, 1,
+				   support_clwb, 0, issued_cnt, completed_cnt,
+				   0);
 	} else {
 		/* Copy from original block */
 		if (metadata_csum == 0)
@@ -718,10 +719,10 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 		}
 
 		/* Now copy from user buf */
-		copied = bytes - do_nova_nvmm_write(sb, kmem + offset,
-						    (void *)buf, bytes, len, 0,
-						    1, 0, issued_cnt,
-						    completed_cnt);
+		copied = bytes - do_nova_nvmm_write(
+					 sb, kmem + offset, (void *)buf, bytes,
+					 0, 1, 0, issued_cnt, completed_cnt,
+					 len >= NOVA_WRITE_WAIT_THRESHOLD);
 		start_delegation = true;
 
 		if (data_csum > 0 || data_parity > 0) {

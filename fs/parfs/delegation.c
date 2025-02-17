@@ -108,7 +108,6 @@ unsigned int nova_do_read_delegation(struct nova_sb_info *sbi,
 
 out:
 	return ret;
-	return 0;
 }
 
 /* make this a global variable so that the compiler will not optimize it */

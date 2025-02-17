@@ -226,6 +226,8 @@ static void do_write_request(struct mm_struct *mm, unsigned long kaddr,
 	INIT_TIMING(memcpy_time);
 
 	if (zero) {
+		nova_dbg_verbose("%s: zero flush_cache:%d\n", __func__,
+				 flush_cache);
 		NOVA_START_TIMING(agent_memcpy_w_t, memcpy_time);
 		if (flush_cache)
 			memset_nt((void *)kaddr, 0, bytes);

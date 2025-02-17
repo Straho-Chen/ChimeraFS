@@ -885,11 +885,11 @@ static inline int nova_get_nsocket(struct nova_sb_info *sbi,
 #include "delegation.h"
 
 static inline size_t do_nova_nvmm_write(struct super_block *sb, void *kmem_dest,
-				       void *ubuf_src, size_t bytes,
-				       size_t total_len, int zero,
-				       int flush_cache, int sfence,
-				       long *issued_cnt,
-				       struct nova_notifyer *completed_cnt)
+					void *ubuf_src, size_t bytes, int zero,
+					int flush_cache, int sfence,
+					long *issued_cnt,
+					struct nova_notifyer *completed_cnt,
+					int wait_hint)
 {
 	size_t left;
 	unsigned long irq_flags = 0;
@@ -897,18 +897,30 @@ static inline size_t do_nova_nvmm_write(struct super_block *sb, void *kmem_dest,
 	INIT_TIMING(delegation_time);
 
 	if (bytes < NOVA_WRITE_DELEGATION_LIMIT) {
+		nova_dbg_verbose("less than delegation limit\n");
 		NOVA_START_TIMING(memcpy_w_nvmm_t, memcpy_time);
 		nova_memunlock_range(sb, kmem_dest, bytes, &irq_flags);
-		left = memcpy_to_pmem_nocache(kmem_dest, ubuf_src, bytes);
+		if (zero) {
+			nova_dbg_verbose("do memset_nt to fill zero\n");
+			memset_nt(kmem_dest, 0, bytes);
+			left = 0;
+		} else {
+			nova_dbg_verbose(
+				"do memcpy_to_pmem_nocache from %#lx to %#lx\n",
+				(unsigned long)ubuf_src,
+				(unsigned long)kmem_dest);
+			left = memcpy_to_pmem_nocache(kmem_dest, ubuf_src,
+						      bytes);
+		}
 		nova_memlock_range(sb, kmem_dest, bytes, &irq_flags);
 		NOVA_END_TIMING(memcpy_w_nvmm_t, memcpy_time);
 	} else {
+		nova_dbg_verbose("do delegation\n");
 		NOVA_START_TIMING(do_delegation_w_t, delegation_time);
 		left = nova_do_write_delegation(
 			NOVA_SB(sb), current->mm, (unsigned long)ubuf_src,
 			(unsigned long)kmem_dest, bytes, zero, flush_cache,
-			sfence, issued_cnt, completed_cnt,
-			total_len >= NOVA_WRITE_WAIT_THRESHOLD);
+			sfence, issued_cnt, completed_cnt, wait_hint);
 		NOVA_END_TIMING(do_delegation_w_t, delegation_time);
 	}
 
@@ -916,30 +928,39 @@ static inline size_t do_nova_nvmm_write(struct super_block *sb, void *kmem_dest,
 }
 
 static inline size_t do_nova_nvmm_read(struct super_block *sb, void *ubuf_dest,
-				      void *kmem_src, size_t bytes,
-				      size_t total_len, int zero,
-				      long *issued_cnt,
-				      struct nova_notifyer *completed_cnt)
+				       void *kmem_src, size_t bytes, int zero,
+				       long *issued_cnt,
+				       struct nova_notifyer *completed_cnt,
+				       int wait_hint)
 {
 	size_t left;
 	INIT_TIMING(memcpy_time);
 	INIT_TIMING(delegation_time);
 
 	if (bytes < NOVA_WRITE_DELEGATION_LIMIT) {
+		nova_dbg_verbose("less than delegation limit\n");
 		NOVA_START_TIMING(memcpy_r_nvmm_t, memcpy_time);
 
-		if (!zero)
+		if (!zero) {
+			nova_dbg_verbose(
+				"do __copy_to_user from %#lx to %#lx\n",
+				(unsigned long)kmem_src,
+				(unsigned long)ubuf_dest);
 			left = __copy_to_user(ubuf_dest, kmem_src, bytes);
-		else
+		} else {
+			nova_dbg_verbose("do __clear_user to fill zero\n");
 			left = __clear_user(ubuf_dest, bytes);
+		}
 
 		NOVA_END_TIMING(memcpy_r_nvmm_t, memcpy_time);
 	} else {
+		nova_dbg_verbose("do delegation\n");
 		NOVA_START_TIMING(do_delegation_r_t, delegation_time);
-		left = nova_do_read_delegation(
-			NOVA_SB(sb), current->mm, (unsigned long)ubuf_dest,
-			(unsigned long)kmem_src, bytes, zero, issued_cnt,
-			completed_cnt, total_len >= NOVA_READ_WAIT_THRESHOLD);
+		left = nova_do_read_delegation(NOVA_SB(sb), current->mm,
+					       (unsigned long)ubuf_dest,
+					       (unsigned long)kmem_src, bytes,
+					       zero, issued_cnt, completed_cnt,
+					       wait_hint);
 		NOVA_END_TIMING(do_delegation_r_t, delegation_time);
 	}
 

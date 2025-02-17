@@ -578,7 +578,8 @@ memcpy:
 		}
 skip_verify:
 		left = do_nova_nvmm_read(sb, buf + copied, dax_mem + offset, nr,
-					len, zero, issued_cnt, completed_cnt);
+					 zero, issued_cnt, completed_cnt,
+					 len >= NOVA_READ_WAIT_THRESHOLD);
 
 		if (left) {
 			nova_dbg("%s ERROR!: bytes %lu, left %lu\n", __func__,
@@ -778,10 +779,10 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 				goto out;
 		}
 		/* Now copy from user buf */
-		copied = bytes - do_nova_nvmm_write(sb, kmem + offset,
-						    (void *)buf, bytes, len, 0,
-						    1, 0, issued_cnt,
-						    completed_cnt);
+		copied = bytes - do_nova_nvmm_write(
+					 sb, kmem + offset, (void *)buf, bytes,
+					 0, 1, 0, issued_cnt, completed_cnt,
+					 len >= NOVA_WRITE_WAIT_THRESHOLD);
 		start_delegation = true;
 
 		if (data_csum > 0 || data_parity > 0) {

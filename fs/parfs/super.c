@@ -40,6 +40,7 @@
 #include <linux/dax.h>
 #include "nova.h"
 #include "agent.h"
+#include "ring.h"
 #include "journal.h"
 
 int measure_timing;
@@ -704,6 +705,18 @@ static int nova_fill_super(struct super_block *sb, void *data, int silent)
 	retval = nova_get_nvmm_info(sb, sbi);
 	if (retval) {
 		nova_err(sb, "%s: Failed to get nvmm info.", __func__);
+		goto out;
+	}
+
+	retval = nova_init_ring_buffers(sbi->sockets);
+	if (retval) {
+		nova_err(sb, "Failed to initialize ring buffers\n");
+		goto out;
+	}
+
+	retval = nova_init_agents(sbi->cpus, sbi->sockets);
+	if (retval) {
+		nova_err(sb, "Failed to initialize agents\n");
 		goto out;
 	}
 
