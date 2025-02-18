@@ -983,8 +983,8 @@ alloc:
 		memset(issued_cnt, 0, sizeof(long) * NOVA_MAX_SOCKET);
 		memset(completed_cnt, 0,
 		       sizeof(struct nova_notifyer) * NOVA_MAX_SOCKET);
-		bp = nova_get_block(sb,
-				    nova_get_block_off(sb, new_blocknr, btype));
+		bp = nova_get_virt_addr_from_offset(
+			sb, nova_get_block_off(sb, new_blocknr, btype));
 		do_nova_nvmm_write(sb, bp, NULL, PAGE_SIZE * ret_blocks, zero,
 				   1, 0, issued_cnt, completed_cnt, 0);
 		nova_complete_delegation(issued_cnt, completed_cnt);

@@ -333,7 +333,7 @@ static void *nova_alloc_pmem_pool(struct super_block *sb,
 	}
 
 	blockoff = nova_get_block_off(sb, *blocknr, blocktype);
-	pool = nova_get_block(sb, blockoff);
+	pool = nova_get_virt_addr_from_offset(sb, blockoff);
 
 	return pool;
 }

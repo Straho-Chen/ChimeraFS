@@ -228,7 +228,7 @@ int nova_update_alter_entry(struct super_block *sb, void *entry)
 		nova_err(sb, "%s: log page tail error detected\n", __func__);
 		return -EIO;
 	}
-	alter_entry = (void *)nova_get_block(sb, alter_curr);
+	alter_entry = (void *)nova_get_virt_addr_from_offset(sb, alter_curr);
 
 	ret = nova_get_entry_copy(sb, entry, &entry_csum, &size, entry_copy);
 	if (ret)
@@ -254,8 +254,10 @@ static int nova_repair_entry_pr(struct super_block *sb, void *entry)
 		goto fail;
 	}
 
-	entry_pr = (void *)nova_get_block(sb, entry_off & POISON_MASK);
-	alter_pr = (void *)nova_get_block(sb, alter_off & POISON_MASK);
+	entry_pr = (void *)nova_get_virt_addr_from_offset(
+		sb, entry_off & POISON_MASK);
+	alter_pr = (void *)nova_get_virt_addr_from_offset(
+		sb, alter_off & POISON_MASK);
 
 	if (entry_pr == NULL || alter_pr == NULL)
 		BUG();
@@ -332,7 +334,7 @@ bool nova_verify_entry_csum(struct super_block *sb, void *entry, void *entryc)
 		goto fail;
 	}
 
-	alter = (void *)nova_get_block(sb, alter_off);
+	alter = (void *)nova_get_virt_addr_from_offset(sb, alter_off);
 	ret = nova_get_entry_copy(sb, alter, &alter_csum, &alter_size,
 				  alter_copy);
 	if (ret < 0) { /* media error */
@@ -467,14 +469,15 @@ int nova_check_inode_integrity(struct super_block *sb, u64 ino, u64 pi_addr,
 	int inode_bad, alter_bad;
 	int ret;
 
-	pi = (struct nova_inode *)nova_get_block(sb, pi_addr);
+	pi = (struct nova_inode *)nova_get_virt_addr_from_offset(sb, pi_addr);
 
 	ret = memcpy_mcsafe(pic, pi, sizeof(struct nova_inode));
 
 	if (metadata_csum == 0)
 		return ret;
 
-	alter_pi = (struct nova_inode *)nova_get_block(sb, alter_pi_addr);
+	alter_pi = (struct nova_inode *)nova_get_virt_addr_from_offset(
+		sb, alter_pi_addr);
 
 	if (ret < 0) { /* media error */
 		ret = nova_repair_inode_pr(sb, pi, alter_pi);
@@ -712,7 +715,7 @@ int nova_update_pgoff_csum(struct super_block *sb,
 	if (blockoff == 0)
 		return 0;
 
-	dax_mem = nova_get_block(sb, blockoff);
+	dax_mem = nova_get_virt_addr_from_offset(sb, blockoff);
 
 	strp_nr = blockoff >> strp_shift;
 
@@ -758,7 +761,7 @@ bool nova_verify_data_csum(struct super_block *sb,
 		1;
 
 	blockoff = nova_get_block_off(sb, blocknr, sih->i_blk_type);
-	blockptr = nova_get_block(sb, blockoff);
+	blockptr = nova_get_virt_addr_from_offset(sb, blockoff);
 
 	/* strp_nr: global stripe number converted from blocknr and offset
 	 * strp_ptr: virtual address of the 1st stripe
@@ -907,7 +910,7 @@ int nova_update_truncated_block_csum(struct super_block *sb,
 	if (nvmm == 0)
 		return -EFAULT;
 
-	nvmm_addr = (char *)nova_get_block(sb, nvmm);
+	nvmm_addr = (char *)nova_get_virt_addr_from_offset(sb, nvmm);
 
 	strp_index = offset >> strp_shift;
 	strp_offset = offset - (strp_index << strp_shift);

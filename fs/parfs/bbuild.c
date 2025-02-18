@@ -223,8 +223,8 @@ static int nova_init_blockmap_from_inode(struct super_block *sb)
 			break;
 		}
 
-		entry = (struct nova_range_node_lowhigh *)nova_get_block(
-			sb, curr_p);
+		entry = (struct nova_range_node_lowhigh *)
+			nova_get_virt_addr_from_offset(sb, curr_p);
 		blknode = nova_alloc_blocknode(sb);
 		if (blknode == NULL)
 			NOVA_ASSERT(0);
@@ -308,8 +308,8 @@ static int nova_init_inode_list_from_inode(struct super_block *sb)
 			NOVA_ASSERT(0);
 		}
 
-		entry = (struct nova_range_node_lowhigh *)nova_get_block(
-			sb, curr_p);
+		entry = (struct nova_range_node_lowhigh *)
+			nova_get_virt_addr_from_offset(sb, curr_p);
 		range_node = nova_alloc_inode_node(sb);
 		if (range_node == NULL)
 			NOVA_ASSERT(0);
@@ -378,7 +378,8 @@ static u64 nova_append_range_node_entry(struct super_block *sb,
 	if (is_last_entry(curr_p, size))
 		curr_p = next_log_page(sb, curr_p);
 
-	entry = (struct nova_range_node_lowhigh *)nova_get_block(sb, curr_p);
+	entry = (struct nova_range_node_lowhigh *)
+		nova_get_virt_addr_from_offset(sb, curr_p);
 	nova_memunlock_range(sb, entry, size, &irq_flags);
 	entry->range_low = cpu_to_le64(curr->range_low);
 	if (cpuid)
@@ -1091,7 +1092,7 @@ again:
 			BUG();
 		}
 
-		entry = (void *)nova_get_block(sb, curr_p);
+		entry = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
 
 		if (metadata_csum == 0)
 			entryc = entry;
@@ -1430,8 +1431,9 @@ static int nova_failure_recovery_crawl(struct super_block *sb)
 
 				count++;
 
-				curr_addr =
-					(unsigned long)nova_get_block(sb, curr);
+				curr_addr = (unsigned long)
+					nova_get_virt_addr_from_offset(sb,
+								       curr);
 				/* Next page resides at the last 8 bytes */
 				curr_addr += 2097152 - 8;
 				curr = *(u64 *)(curr_addr);

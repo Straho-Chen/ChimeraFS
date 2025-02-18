@@ -252,8 +252,8 @@ static void do_write_request(struct mm_struct *mm, unsigned long kaddr,
 
 	NOVA_START_TIMING(agent_memcpy_w_t, memcpy_time);
 	for (i = 0; i < tasks_index; i++) {
-		nova_dbg_delegation("uaddr: %lx, size: %ld, kaddr: %lx\n", tasks[i].kuaddr,
-			 tasks[i].size, kaddr);
+		nova_dbg_delegation("uaddr: %lx, size: %ld, kaddr: %lx\n",
+				    tasks[i].kuaddr, tasks[i].size, kaddr);
 
 #if NOVA_NT_STORE
 		__copy_from_user_inatomic_nocache(

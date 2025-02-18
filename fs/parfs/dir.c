@@ -235,7 +235,8 @@ int nova_append_dir_init_entries(struct super_block *sb, struct nova_inode *pi,
 
 	pi->log_tail = pi->log_head = new_block;
 
-	de_entry = (struct nova_dentry *)nova_get_block(sb, new_block);
+	de_entry = (struct nova_dentry *)nova_get_virt_addr_from_offset(
+		sb, new_block);
 
 	length = nova_init_dentry(sb, de_entry, self_ino, parent_ino, epoch_id);
 
@@ -256,7 +257,8 @@ int nova_append_dir_init_entries(struct super_block *sb, struct nova_inode *pi,
 	nova_memunlock_inode(sb, pi, &irq_flags);
 	pi->alter_log_tail = pi->alter_log_head = new_block;
 
-	de_entry = (struct nova_dentry *)nova_get_block(sb, new_block);
+	de_entry = (struct nova_dentry *)nova_get_virt_addr_from_offset(
+		sb, new_block);
 
 	length = nova_init_dentry(sb, de_entry, self_ino, parent_ino, epoch_id);
 
@@ -271,7 +273,8 @@ int nova_append_dir_init_entries(struct super_block *sb, struct nova_inode *pi,
 	if (ret)
 		return ret;
 
-	alter_pi = (struct nova_inode *)nova_get_block(sb, alter_pi_addr);
+	alter_pi = (struct nova_inode *)nova_get_virt_addr_from_offset(
+		sb, alter_pi_addr);
 	if (!alter_pi)
 		return -EINVAL;
 
@@ -327,7 +330,8 @@ int nova_add_dentry(struct dentry *dentry, u64 ino, int inc_link,
 	}
 
 	curr_entry = update->curr_entry;
-	direntry = (struct nova_dentry *)nova_get_block(sb, curr_entry);
+	direntry = (struct nova_dentry *)nova_get_virt_addr_from_offset(
+		sb, curr_entry);
 	sih->last_dentry = curr_entry;
 	ret = nova_insert_dir_tree(sb, sih, name, namelen, direntry);
 
@@ -443,7 +447,8 @@ int nova_remove_dentry(struct dentry *dentry, int dec_link,
 	update->create_dentry = old_dentry;
 	curr_entry = update->curr_entry;
 	update->delete_dentry =
-		(struct nova_dentry *)nova_get_block(sb, curr_entry);
+		(struct nova_dentry *)nova_get_virt_addr_from_offset(
+			sb, curr_entry);
 	sih->last_dentry = curr_entry;
 	sih->trans_id++;
 out:
@@ -545,7 +550,7 @@ static int nova_readdir_slow_rbtree(struct file *file, struct dir_context *ctx)
 			return ret;
 		}
 
-		child_pi = nova_get_block(sb, pi_addr);
+		child_pi = nova_get_virt_addr_from_offset(sb, pi_addr);
 		nova_dbg_verbose(
 			"ctx: ino %llu, name %s, name_len %u, de_len %u, csum 0x%x\n",
 			(u64)ino, entry->name, entry->name_len, entry->de_len,
@@ -652,7 +657,7 @@ static int nova_readdir_fast(struct file *file, struct dir_context *ctx)
 			return -EINVAL;
 		}
 
-		addr = (void *)nova_get_block(sb, curr_p);
+		addr = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
 		type = nova_get_entry_type(addr);
 		switch (type) {
 		case SET_ATTR:
@@ -670,7 +675,8 @@ static int nova_readdir_fast(struct file *file, struct dir_context *ctx)
 			return -EINVAL;
 		}
 
-		entry = (struct nova_dentry *)nova_get_block(sb, curr_p);
+		entry = (struct nova_dentry *)nova_get_virt_addr_from_offset(
+			sb, curr_p);
 		nova_dbg_verbose(
 			"curr_p: 0x%llx, type %d, ino %llu, name %s, namelen %u, rec len %u\n",
 			curr_p, entry->entry_type, le64_to_cpu(entry->ino),
@@ -698,7 +704,7 @@ static int nova_readdir_fast(struct file *file, struct dir_context *ctx)
 				return ret;
 			}
 
-			child_pi = nova_get_block(sb, pi_addr);
+			child_pi = nova_get_virt_addr_from_offset(sb, pi_addr);
 			nova_dbg_verbose(
 				"ctx: ino %llu, name %s, name_len %u, de_len %u\n",
 				(u64)ino, entry->name, entry->name_len,

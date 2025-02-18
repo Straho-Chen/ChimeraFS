@@ -38,10 +38,10 @@ nova_get_journal_pointers(struct super_block *sb, int cpu)
 	if (cpu >= sbi->cpus)
 		BUG();
 
-	return (struct journal_ptr_pair *)((char *)nova_get_block(
-						   sb, NOVA_DEF_BLOCK_SIZE_4K *
-							       JOURNAL_START) +
-					   cpu * CACHELINE_SIZE);
+	return (struct journal_ptr_pair
+			*)((char *)nova_get_virt_addr_from_offset(
+				   sb, NOVA_DEF_BLOCK_SIZE_4K * JOURNAL_START) +
+			   cpu * CACHELINE_SIZE);
 }
 
 u64 nova_create_inode_transaction(struct super_block *sb, struct inode *inode,

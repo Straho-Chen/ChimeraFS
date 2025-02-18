@@ -33,7 +33,7 @@ static inline int nova_copy_partial_block(struct super_block *sb,
 	unsigned long nvmm;
 
 	nvmm = get_nvmm(sb, sih, entry, index);
-	ptr = nova_get_block(sb, (nvmm << PAGE_SHIFT));
+	ptr = nova_get_virt_addr_from_offset(sb, (nvmm << PAGE_SHIFT));
 
 	if (ptr != NULL) {
 		do_nova_nvmm_write(sb, kmem + offset, ptr + offset, length, 0,
@@ -164,7 +164,7 @@ int nova_reassign_file_tree(struct super_block *sb,
 			return -EINVAL;
 		}
 
-		addr = (void *)nova_get_block(sb, curr_p);
+		addr = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
 		entry = (struct nova_file_write_entry *)addr;
 
 		if (metadata_csum == 0)
@@ -215,7 +215,7 @@ int nova_cleanup_incomplete_write(struct super_block *sb,
 			return -EINVAL;
 		}
 
-		addr = (void *)nova_get_block(sb, curr_p);
+		addr = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
 		entry = (struct nova_file_write_entry *)addr;
 
 		if (metadata_csum == 0)
@@ -329,7 +329,8 @@ int nova_protect_file_data(struct super_block *sb, struct inode *inode,
 			/* make sure data in the partial block head is good */
 			nvmm = get_nvmm(sb, sih, entryc, start_blk);
 			nvmmoff = nova_get_block_off(sb, nvmm, sih->i_blk_type);
-			blockptr = (u8 *)nova_get_block(sb, nvmmoff);
+			blockptr = (u8 *)nova_get_virt_addr_from_offset(
+				sb, nvmmoff);
 
 			mapped = nova_find_pgoff_in_vma(inode, start_blk);
 			if (data_csum > 0 && !mapped && !inplace) {
@@ -403,7 +404,8 @@ eblk:
 			/* make sure data in the partial block tail is good */
 			nvmm = get_nvmm(sb, sih, entryc, end_blk);
 			nvmmoff = nova_get_block_off(sb, nvmm, sih->i_blk_type);
-			blockptr = (u8 *)nova_get_block(sb, nvmmoff);
+			blockptr = (u8 *)nova_get_virt_addr_from_offset(
+				sb, nvmmoff);
 
 			mapped = nova_find_pgoff_in_vma(inode, end_blk);
 			if (data_csum > 0 && !mapped && !inplace) {
@@ -628,7 +630,7 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 
 	count = len;
 
-	pi = nova_get_block(sb, sih->pi_addr);
+	pi = nova_get_virt_addr_from_offset(sb, sih->pi_addr);
 
 	/* nova_inode tail pointer will be updated and we make sure all other
    * inode fields are good before checksumming the whole structure
@@ -707,7 +709,7 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 		if (bytes > count)
 			bytes = count;
 
-		kmem = nova_get_block(inode->i_sb, blk_off);
+		kmem = nova_get_virt_addr_from_offset(inode->i_sb, blk_off);
 
 		if (hole_fill &&
 		    (offset || ((offset + bytes) & (PAGE_SIZE - 1)) != 0)) {

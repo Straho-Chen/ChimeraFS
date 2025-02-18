@@ -1010,6 +1010,9 @@ static void nova_put_super(struct super_block *sb)
 	struct inode_map *inode_map;
 	int i;
 
+	nova_agents_fini();
+	nova_fini_ring_buffers();
+
 	if (measure_timing) {
 		nova_print_timing_stats(sb);
 		nova_clear_stats(sb);

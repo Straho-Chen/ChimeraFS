@@ -181,7 +181,8 @@ static inline void nova_memlock_reserved(struct super_block *sb,
 static inline void nova_memunlock_journal(struct super_block *sb,
 					  unsigned long *flags)
 {
-	void *addr = nova_get_block(sb, NOVA_DEF_BLOCK_SIZE_4K * JOURNAL_START);
+	void *addr = nova_get_virt_addr_from_offset(sb, NOVA_DEF_BLOCK_SIZE_4K *
+								JOURNAL_START);
 
 	if (nova_range_check(sb, addr, NOVA_DEF_BLOCK_SIZE_4K))
 		return;
@@ -193,7 +194,8 @@ static inline void nova_memunlock_journal(struct super_block *sb,
 static inline void nova_memlock_journal(struct super_block *sb,
 					unsigned long *flags)
 {
-	void *addr = nova_get_block(sb, NOVA_DEF_BLOCK_SIZE_4K * JOURNAL_START);
+	void *addr = nova_get_virt_addr_from_offset(sb, NOVA_DEF_BLOCK_SIZE_4K *
+								JOURNAL_START);
 
 	if (nova_is_protected(sb))
 		__nova_memlock_range(addr, NOVA_DEF_BLOCK_SIZE_4K, flags);

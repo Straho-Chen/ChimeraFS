@@ -147,7 +147,7 @@ static inline struct nova_inode *nova_get_alter_inode(struct super_block *sb,
 	if (metadata_csum == 0)
 		return NULL;
 
-	addr = nova_get_block(sb, sih->alter_pi_addr);
+	addr = nova_get_virt_addr_from_offset(sb, sih->alter_pi_addr);
 	rc = memcpy_mcsafe(&fake_pi, addr, sizeof(struct nova_inode));
 	if (rc)
 		return NULL;
@@ -267,7 +267,7 @@ static inline struct inode_table *nova_get_inode_table(struct super_block *sb,
 	else
 		table_start = INODE_TABLE1_START;
 
-	return (struct inode_table *)((char *)nova_get_block(
+	return (struct inode_table *)((char *)nova_get_virt_addr_from_offset(
 					      sb, NOVA_DEF_BLOCK_SIZE_4K *
 							  table_start) +
 				      cpu * CACHELINE_SIZE);
@@ -343,7 +343,7 @@ static inline struct nova_inode *nova_get_inode(struct super_block *sb,
 	void *addr;
 	int rc;
 
-	addr = nova_get_block(sb, sih->pi_addr);
+	addr = nova_get_virt_addr_from_offset(sb, sih->pi_addr);
 	rc = memcpy_mcsafe(&fake_pi, addr, sizeof(struct nova_inode));
 	if (rc)
 		return NULL;

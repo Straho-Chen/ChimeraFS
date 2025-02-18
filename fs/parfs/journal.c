@@ -98,8 +98,8 @@ static int nova_check_journal_entries(struct super_block *sb,
 
 	temp = pair->journal_head;
 	while (temp != pair->journal_tail) {
-		entry = (struct nova_lite_journal_entry *)nova_get_block(sb,
-									 temp);
+		entry = (struct nova_lite_journal_entry *)
+			nova_get_virt_addr_from_offset(sb, temp);
 		ret = nova_check_entry_integrity(sb, entry);
 		if (ret) {
 			nova_dbg("Entry %p checksum failure\n", entry);
@@ -126,8 +126,9 @@ static void nova_undo_journal_inode(struct super_block *sb,
 	pi_addr = le64_to_cpu(entry->data1);
 	alter_pi_addr = le64_to_cpu(entry->data2);
 
-	pi = (struct nova_inode *)nova_get_block(sb, pi_addr);
-	alter_pi = (struct nova_inode *)nova_get_block(sb, alter_pi_addr);
+	pi = (struct nova_inode *)nova_get_virt_addr_from_offset(sb, pi_addr);
+	alter_pi = (struct nova_inode *)nova_get_virt_addr_from_offset(
+		sb, alter_pi_addr);
 
 	memcpy_to_pmem_nocache(pi, alter_pi, sizeof(struct nova_inode));
 }
@@ -140,8 +141,9 @@ static void nova_undo_journal_entry(struct super_block *sb,
 	addr = le64_to_cpu(entry->data1);
 	value = le64_to_cpu(entry->data2);
 
-	*(u64 *)nova_get_block(sb, addr) = (u64)value;
-	nova_flush_buffer((void *)nova_get_block(sb, addr), CACHELINE_SIZE, 0);
+	*(u64 *)nova_get_virt_addr_from_offset(sb, addr) = (u64)value;
+	nova_flush_buffer((void *)nova_get_virt_addr_from_offset(sb, addr),
+			  CACHELINE_SIZE, 0);
 }
 
 static void nova_undo_lite_journal_entry(struct super_block *sb,
@@ -175,8 +177,8 @@ static int nova_recover_lite_journal(struct super_block *sb,
 	nova_memunlock_journal(sb, &irq_flags);
 	temp = pair->journal_head;
 	while (temp != pair->journal_tail) {
-		entry = (struct nova_lite_journal_entry *)nova_get_block(sb,
-									 temp);
+		entry = (struct nova_lite_journal_entry *)
+			nova_get_virt_addr_from_offset(sb, temp);
 		nova_undo_lite_journal_entry(sb, entry);
 		temp = next_lite_journal(temp);
 	}
@@ -197,7 +199,8 @@ static u64 nova_append_replica_inode_journal(struct super_block *sb, u64 curr_p,
 	struct nova_inode_info *si = NOVA_I(inode);
 	struct nova_inode_info_header *sih = &si->header;
 
-	entry = (struct nova_lite_journal_entry *)nova_get_block(sb, curr_p);
+	entry = (struct nova_lite_journal_entry *)
+		nova_get_virt_addr_from_offset(sb, curr_p);
 	entry->type = cpu_to_le64(JOURNAL_INODE);
 	entry->padding = 0;
 	entry->data1 = cpu_to_le64(sih->pi_addr);
@@ -217,7 +220,8 @@ static u64 nova_append_entry_journal(struct super_block *sb, u64 curr_p,
 	u64 *aligned_field;
 	u64 addr;
 
-	entry = (struct nova_lite_journal_entry *)nova_get_block(sb, curr_p);
+	entry = (struct nova_lite_journal_entry *)
+		nova_get_virt_addr_from_offset(sb, curr_p);
 	entry->type = cpu_to_le64(JOURNAL_ENTRY);
 	entry->padding = 0;
 	/* Align to 8 bytes */
@@ -291,17 +295,17 @@ void nova_flush_journal_in_batch(struct super_block *sb, u64 head, u64 tail)
 
 	/* flush journal log entries in batch */
 	if (head < tail) {
-		journal_entry = nova_get_block(sb, head);
+		journal_entry = nova_get_virt_addr_from_offset(sb, head);
 		nova_flush_buffer(journal_entry, tail - head, 0);
 
 	} else { // circular
 		// head to end
-		journal_entry = nova_get_block(sb, head);
+		journal_entry = nova_get_virt_addr_from_offset(sb, head);
 		nova_flush_buffer(journal_entry,
 				  PAGE_SIZE - (head & ~PAGE_MASK), 0);
 
 		// start to tail
-		journal_entry = nova_get_block(sb, tail);
+		journal_entry = nova_get_virt_addr_from_offset(sb, tail);
 		nova_flush_buffer((void *)((u64)journal_entry & PAGE_MASK),
 				  tail & ~PAGE_MASK, 0);
 	}

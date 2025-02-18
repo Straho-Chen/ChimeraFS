@@ -52,7 +52,7 @@ int nova_block_symlink(struct super_block *sb, struct nova_inode *pi,
 
 	/* First copy name to name block */
 	block = nova_get_block_off(sb, name_blocknr, NOVA_BLOCK_TYPE_4K);
-	blockp = (char *)nova_get_block(sb, block);
+	blockp = (char *)nova_get_virt_addr_from_offset(sb, block);
 
 	nova_memunlock_block(sb, blockp, &irq_flags);
 	memcpy_to_pmem_nocache(blockp, symname, len);
@@ -107,8 +107,8 @@ static int nova_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 	struct nova_inode_info_header *sih = &si->header;
 	char *blockp;
 
-	entry = (struct nova_file_write_entry *)nova_get_block(sb,
-							       sih->log_head);
+	entry = (struct nova_file_write_entry *)nova_get_virt_addr_from_offset(
+		sb, sih->log_head);
 
 	if (metadata_csum == 0)
 		entryc = entry;
@@ -118,7 +118,8 @@ static int nova_readlink(struct dentry *dentry, char __user *buffer, int buflen)
 			return -EIO;
 	}
 
-	blockp = (char *)nova_get_block(sb, BLOCK_OFF(entryc->block));
+	blockp = (char *)nova_get_virt_addr_from_offset(
+		sb, BLOCK_OFF(entryc->block));
 
 	return nova_readlink_copy(buffer, buflen, blockp);
 }
@@ -133,8 +134,8 @@ static const char *nova_get_link(struct dentry *dentry, struct inode *inode,
 	struct nova_inode_info_header *sih = &si->header;
 	char *blockp;
 
-	entry = (struct nova_file_write_entry *)nova_get_block(sb,
-							       sih->log_head);
+	entry = (struct nova_file_write_entry *)nova_get_virt_addr_from_offset(
+		sb, sih->log_head);
 	if (metadata_csum == 0)
 		entryc = entry;
 	else {
@@ -143,7 +144,8 @@ static const char *nova_get_link(struct dentry *dentry, struct inode *inode,
 			return NULL;
 	}
 
-	blockp = (char *)nova_get_block(sb, BLOCK_OFF(entryc->block));
+	blockp = (char *)nova_get_virt_addr_from_offset(
+		sb, BLOCK_OFF(entryc->block));
 
 	return blockp;
 }

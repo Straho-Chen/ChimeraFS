@@ -9,11 +9,11 @@
  *
  * The fields are partitioned into static and dynamic fields. The static fields
  * never change after file system creation. This was primarily done because
- * nova_get_block() returns NULL if the block offset is 0 (helps in catching
+ * nova_get_virt_addr_from_offset() returns NULL if the block offset is 0 (helps in catching
  * bugs). So if we modify any field using journaling (for consistency), we
  * will have to modify s_sum which is at offset 0. So journaling code fails.
  * This (static+dynamic fields) is a temporary solution and can be avoided
- * once the file system becomes stable and nova_get_block() returns correct
+ * once the file system becomes stable and nova_get_virt_addr_from_offset() returns correct
  * pointers even for offset 0.
  */
 struct nova_super_block {

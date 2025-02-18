@@ -213,11 +213,12 @@ static inline void memset_nt(void *dest, uint32_t dword, size_t length)
  * If this is part of a read-modify-write of the block,
  * nova_memunlock_block() before calling!
  */
-static inline void *nova_get_block(struct super_block *sb, u64 block)
+static inline void *nova_get_virt_addr_from_offset(struct super_block *sb,
+						   u64 off)
 {
 	struct nova_super_block *ps = nova_get_super(sb);
 
-	return block ? ((void *)ps + block) : NULL;
+	return off ? ((void *)ps + off) : NULL;
 }
 
 static inline int nova_get_block_from_addr(struct nova_sb_info *sbi, void *addr)
@@ -225,12 +226,12 @@ static inline int nova_get_block_from_addr(struct nova_sb_info *sbi, void *addr)
 	return ((addr - sbi->virt_addr) >> PAGE_SHIFT);
 }
 
-static inline int nova_get_reference(struct super_block *sb, u64 block,
+static inline int nova_get_reference(struct super_block *sb, u64 off,
 				     void *dram, void **nvmm, size_t size)
 {
 	int rc;
 
-	*nvmm = nova_get_block(sb, block);
+	*nvmm = nova_get_virt_addr_from_offset(sb, off);
 	rc = memcpy_mcsafe(dram, *nvmm, size);
 	return rc;
 }
@@ -579,7 +580,9 @@ static inline u64 next_log_page(struct super_block *sb, u64 curr)
 	int rc;
 
 	curr = BLOCK_OFF(curr);
-	curr_page = (struct nova_inode_log_page *)nova_get_block(sb, curr);
+	curr_page =
+		(struct nova_inode_log_page *)nova_get_virt_addr_from_offset(
+			sb, curr);
 	rc = memcpy_mcsafe(&next, &curr_page->page_tail.next_page, sizeof(u64));
 	if (rc)
 		return rc;
@@ -597,7 +600,9 @@ static inline u64 alter_log_page(struct super_block *sb, u64 curr)
 		return 0;
 
 	curr = BLOCK_OFF(curr);
-	curr_page = (struct nova_inode_log_page *)nova_get_block(sb, curr);
+	curr_page =
+		(struct nova_inode_log_page *)nova_get_virt_addr_from_offset(
+			sb, curr);
 	rc = memcpy_mcsafe(&next, &curr_page->page_tail.alter_page,
 			   sizeof(u64));
 	if (rc)
@@ -606,31 +611,10 @@ static inline u64 alter_log_page(struct super_block *sb, u64 curr)
 	return next;
 }
 
-#if 0
-static inline u64 next_log_page(struct super_block *sb, u64 curr_p)
-{
-	void *curr_addr = nova_get_block(sb, curr_p);
-	unsigned long page_tail = BLOCK_OFF((unsigned long)curr_addr)
-					+ LOG_BLOCK_TAIL;
-	return ((struct nova_inode_page_tail *)page_tail)->next_page;
-}
-
-static inline u64 alter_log_page(struct super_block *sb, u64 curr_p)
-{
-	void *curr_addr = nova_get_block(sb, curr_p);
-	unsigned long page_tail = BLOCK_OFF((unsigned long)curr_addr)
-					+ LOG_BLOCK_TAIL;
-	if (metadata_csum == 0)
-		return 0;
-
-	return ((struct nova_inode_page_tail *)page_tail)->alter_page;
-}
-#endif
-
 static inline u64 alter_log_entry(struct super_block *sb, u64 curr_p)
 {
 	u64 alter_page;
-	void *curr_addr = nova_get_block(sb, curr_p);
+	void *curr_addr = nova_get_virt_addr_from_offset(sb, curr_p);
 	unsigned long page_tail =
 		BLOCK_OFF((unsigned long)curr_addr) + LOG_BLOCK_TAIL;
 	if (metadata_csum == 0)
@@ -640,14 +624,14 @@ static inline u64 alter_log_entry(struct super_block *sb, u64 curr_p)
 	return alter_page + ENTRY_LOC(curr_p);
 }
 
-static inline void nova_set_next_page_flag(struct super_block *sb, u64 curr_p)
+static inline void nova_set_next_page_flag(struct super_block *sb, u64 curr_off)
 {
 	void *p;
 
-	if (ENTRY_LOC(curr_p) >= LOG_BLOCK_TAIL)
+	if (ENTRY_LOC(curr_off) >= LOG_BLOCK_TAIL)
 		return;
 
-	p = nova_get_block(sb, curr_p);
+	p = nova_get_virt_addr_from_offset(sb, curr_off);
 	nova_set_entry_type(p, NEXT_PAGE);
 	nova_flush_buffer(p, CACHELINE_SIZE, 1);
 }
@@ -691,7 +675,9 @@ static inline void nova_inc_page_num_entries(struct super_block *sb, u64 curr)
 	struct nova_inode_log_page *curr_page;
 
 	curr = BLOCK_OFF(curr);
-	curr_page = (struct nova_inode_log_page *)nova_get_block(sb, curr);
+	curr_page =
+		(struct nova_inode_log_page *)nova_get_virt_addr_from_offset(
+			sb, curr);
 
 	curr_page->page_tail.num_entries++;
 	nova_flush_buffer(&curr_page->page_tail,
@@ -707,7 +693,9 @@ static inline void nova_inc_page_invalid_entries(struct super_block *sb,
 	u64 old_curr = curr;
 
 	curr = BLOCK_OFF(curr);
-	curr_page = (struct nova_inode_log_page *)nova_get_block(sb, curr);
+	curr_page =
+		(struct nova_inode_log_page *)nova_get_virt_addr_from_offset(
+			sb, curr);
 
 	curr_page->page_tail.invalid_entries++;
 	if (curr_page->page_tail.invalid_entries >
@@ -722,8 +710,8 @@ static inline void nova_inc_page_invalid_entries(struct super_block *sb,
 			  sizeof(struct nova_inode_page_tail), 0);
 }
 
-static inline void nova_set_alter_page_address(struct super_block *sb, u64 curr,
-					       u64 alter_curr)
+static inline void nova_set_alter_page_address(struct super_block *sb,
+					       u64 curr_off, u64 alter_curr_off)
 {
 	struct nova_inode_log_page *curr_page;
 	struct nova_inode_log_page *alter_page;
@@ -731,14 +719,15 @@ static inline void nova_set_alter_page_address(struct super_block *sb, u64 curr,
 	if (metadata_csum == 0)
 		return;
 
-	curr_page = nova_get_block(sb, BLOCK_OFF(curr));
-	alter_page = nova_get_block(sb, BLOCK_OFF(alter_curr));
+	curr_page = nova_get_virt_addr_from_offset(sb, BLOCK_OFF(curr_off));
+	alter_page =
+		nova_get_virt_addr_from_offset(sb, BLOCK_OFF(alter_curr_off));
 
-	curr_page->page_tail.alter_page = alter_curr;
+	curr_page->page_tail.alter_page = alter_curr_off;
 	nova_flush_buffer(&curr_page->page_tail,
 			  sizeof(struct nova_inode_page_tail), 0);
 
-	alter_page->page_tail.alter_page = curr;
+	alter_page->page_tail.alter_page = curr_off;
 	nova_flush_buffer(&alter_page->page_tail,
 			  sizeof(struct nova_inode_page_tail), 0);
 }
@@ -754,17 +743,17 @@ static inline bool is_last_entry(u64 curr_p, size_t size)
 	return entry_end > LOG_BLOCK_TAIL;
 }
 
-static inline bool goto_next_page(struct super_block *sb, u64 curr_p)
+static inline bool goto_next_page(struct super_block *sb, u64 curr_off)
 {
 	void *addr;
 	u8 type;
 	int rc;
 
 	/* Each kind of entry takes at least 32 bytes */
-	if (ENTRY_LOC(curr_p) + 32 > LOG_BLOCK_TAIL)
+	if (ENTRY_LOC(curr_off) + 32 > LOG_BLOCK_TAIL)
 		return true;
 
-	addr = nova_get_block(sb, curr_p);
+	addr = nova_get_virt_addr_from_offset(sb, curr_off);
 	rc = memcpy_mcsafe(&type, addr, sizeof(u8));
 
 	if (rc < 0)
@@ -835,7 +824,7 @@ static inline void *nova_get_data_csum_addr(struct super_block *sb, u64 strp_nr,
 		return NULL;
 	}
 
-	data_csum_addr = (u8 *)nova_get_block(sb, blockoff) +
+	data_csum_addr = (u8 *)nova_get_virt_addr_from_offset(sb, blockoff) +
 			 NOVA_DATA_CSUM_LEN * strp_nr;
 
 	return data_csum_addr;
@@ -876,7 +865,7 @@ static inline void *nova_get_parity_addr(struct super_block *sb,
 	}
 
 	data_csum_addr =
-		(u8 *)nova_get_block(sb, blockoff) +
+		(u8 *)nova_get_virt_addr_from_offset(sb, blockoff) +
 		((blocknr - free_list->block_start) << NOVA_STRIPE_SHIFT);
 
 	return data_csum_addr;

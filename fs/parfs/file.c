@@ -290,7 +290,7 @@ static long nova_fallocate(struct file *file, int mode, loff_t offset,
 			goto out;
 		}
 
-		entry = nova_get_block(sb, update.curr_entry);
+		entry = nova_get_virt_addr_from_offset(sb, update.curr_entry);
 		nova_reset_csum_parity_range(sb, sih, entry, start_blk,
 					     start_blk + allocated, 1, 0);
 
@@ -555,7 +555,8 @@ static ssize_t do_dax_mapping_read(struct file *filp, char __user *buf,
 		}
 
 		nvmm = get_nvmm(sb, sih, entryc, index);
-		dax_mem = nova_get_block(sb, (nvmm << PAGE_SHIFT));
+		dax_mem = nova_get_virt_addr_from_offset(sb,
+							 (nvmm << PAGE_SHIFT));
 
 memcpy:
 		nr = nr - offset;
@@ -696,7 +697,7 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 
 	count = len;
 
-	pi = nova_get_block(sb, sih->pi_addr);
+	pi = nova_get_virt_addr_from_offset(sb, sih->pi_addr);
 
 	/* nova_inode tail pointer will be updated and we make sure all other
 	 * inode fields are good before checksumming the whole structure
@@ -762,9 +763,9 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 		if (bytes > count)
 			bytes = count;
 
-		kmem = nova_get_block(inode->i_sb,
-				      nova_get_block_off(sb, blocknr,
-							 sih->i_blk_type));
+		kmem = nova_get_virt_addr_from_offset(
+			inode->i_sb,
+			nova_get_block_off(sb, blocknr, sih->i_blk_type));
 
 		if (offset || ((offset + bytes) & (PAGE_SIZE - 1)) != 0) {
 			/*

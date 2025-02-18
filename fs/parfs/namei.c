@@ -162,7 +162,7 @@ static int nova_create(struct mnt_idmap *idmap, struct inode *dir,
 	d_instantiate(dentry, inode);
 	unlock_new_inode(inode);
 
-	pi = nova_get_block(sb, pi_addr);
+	pi = nova_get_virt_addr_from_offset(sb, pi_addr);
 	nova_lite_transaction_for_new_inode(sb, pi, pidir, inode, dir, &update);
 	NOVA_END_TIMING(create_t, create_time);
 	return err;
@@ -214,7 +214,7 @@ static int nova_mknod(struct mnt_idmap *idmap, struct inode *dir,
 	d_instantiate(dentry, inode);
 	unlock_new_inode(inode);
 
-	pi = nova_get_block(sb, pi_addr);
+	pi = nova_get_virt_addr_from_offset(sb, pi_addr);
 	nova_lite_transaction_for_new_inode(sb, pi, pidir, inode, dir, &update);
 	NOVA_END_TIMING(mknod_t, mknod_time);
 	return err;
@@ -740,7 +740,8 @@ static int nova_rename(struct mnt_idmap *idmap, struct inode *old_dir,
 		/* My father is changed. Update .. entry */
 		/* For simplicity, we use in-place update and journal it */
 		change_parent = 1;
-		head_addr = (char *)nova_get_block(sb, old_pi->log_head);
+		head_addr = (char *)nova_get_virt_addr_from_offset(
+			sb, old_pi->log_head);
 		father_entry = (struct nova_dentry *)(head_addr +
 						      NOVA_DIR_LOG_REC_LEN(1));
 

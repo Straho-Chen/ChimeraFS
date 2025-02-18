@@ -162,7 +162,7 @@ static int nova_rebuild_inode_finish(struct super_block *sb,
 	nova_update_inode_with_rebuild(sb, reb, pi);
 	nova_update_inode_checksum(pi);
 	if (metadata_csum) {
-		alter_pi = (struct nova_inode *)nova_get_block(
+		alter_pi = (struct nova_inode *)nova_get_virt_addr_from_offset(
 			sb, sih->alter_pi_addr);
 		memcpy_to_pmem_nocache(alter_pi, pi, sizeof(struct nova_inode));
 	}
@@ -359,7 +359,7 @@ int nova_reset_vma_csum_parity(struct super_block *sb, struct vma_item *item)
 					     end_index);
 
 	if (item->mmap_entry) {
-		entry = nova_get_block(sb, item->mmap_entry);
+		entry = nova_get_virt_addr_from_offset(sb, item->mmap_entry);
 		ret = nova_invalidate_logentry(sb, entry, MMAP_WRITE, 0);
 	}
 
@@ -446,7 +446,7 @@ static int nova_rebuild_file_inode_tree(struct super_block *sb,
 			BUG();
 		}
 
-		addr = (void *)nova_get_block(sb, curr_p);
+		addr = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
 
 		if (metadata_csum == 0)
 			entryc = addr;
@@ -539,9 +539,11 @@ static void nova_reassign_last_dentry(struct super_block *sb,
 	if (sih->last_dentry == 0) {
 		sih->last_dentry = curr_p;
 	} else {
-		old_dentry = (struct nova_dentry *)nova_get_block(
-			sb, sih->last_dentry);
-		dentry = (struct nova_dentry *)nova_get_block(sb, curr_p);
+		old_dentry =
+			(struct nova_dentry *)nova_get_virt_addr_from_offset(
+				sb, sih->last_dentry);
+		dentry = (struct nova_dentry *)nova_get_virt_addr_from_offset(
+			sb, curr_p);
 		if (dentry->trans_id >= old_dentry->trans_id)
 			sih->last_dentry = curr_p;
 	}
@@ -650,7 +652,7 @@ int nova_rebuild_dir_inode_tree(struct super_block *sb, struct nova_inode *pi,
 			BUG();
 		}
 
-		addr = (void *)nova_get_block(sb, curr_p);
+		addr = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
 
 		if (metadata_csum == 0)
 			entryc = addr;
@@ -732,7 +734,7 @@ int nova_rebuild_inode(struct super_block *sb, struct nova_inode_info *si,
 	if (ret)
 		return ret;
 
-	pi = (struct nova_inode *)nova_get_block(sb, pi_addr);
+	pi = (struct nova_inode *)nova_get_virt_addr_from_offset(sb, pi_addr);
 	// We need this valid in case we need to evict the inode.
 
 	nova_init_header(sb, sih, __le16_to_cpu(pi->i_mode));
@@ -823,7 +825,7 @@ int nova_restore_snapshot_table(struct super_block *sb, int just_init)
 			BUG();
 		}
 
-		addr = (void *)nova_get_block(sb, curr_p);
+		addr = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
 
 		if (metadata_csum == 0)
 			entryc = addr;

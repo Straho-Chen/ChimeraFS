@@ -33,7 +33,7 @@ static bool curr_log_entry_invalid(struct super_block *sb,
 	u8 type;
 	bool ret = true;
 
-	addr = (void *)nova_get_block(sb, curr_p);
+	addr = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
 
 	/* FIXME: this check might hurt performance for workloads that
 	 * frequently invokes gc
@@ -114,7 +114,9 @@ static bool curr_page_invalid(struct super_block *sb, struct nova_inode *pi,
 
 	NOVA_START_TIMING(check_invalid_t, check_time);
 
-	curr_page = (struct nova_inode_log_page *)nova_get_block(sb, page_head);
+	curr_page =
+		(struct nova_inode_log_page *)nova_get_virt_addr_from_offset(
+			sb, page_head);
 	rc = memcpy_mcsafe(&page_tail, &curr_page->page_tail,
 			   sizeof(struct nova_inode_page_tail));
 	if (rc) {
@@ -256,7 +258,7 @@ static int nova_gc_assign_new_entry(struct super_block *sb,
 	u8 type;
 	int ret = 0;
 
-	addr = (void *)nova_get_block(sb, curr_p);
+	addr = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
 	type = nova_get_entry_type(addr);
 	switch (type) {
 	case SET_ATTR:
@@ -273,13 +275,13 @@ static int nova_gc_assign_new_entry(struct super_block *sb,
 						    new_curr);
 		break;
 	case FILE_WRITE:
-		new_addr = (void *)nova_get_block(sb, new_curr);
+		new_addr = (void *)nova_get_virt_addr_from_offset(sb, new_curr);
 		old_entry = (struct nova_file_write_entry *)addr;
 		new_entry = (struct nova_file_write_entry *)new_addr;
 		ret = nova_gc_assign_file_entry(sb, sih, old_entry, new_entry);
 		break;
 	case DIR_LOG:
-		new_addr = (void *)nova_get_block(sb, new_curr);
+		new_addr = (void *)nova_get_virt_addr_from_offset(sb, new_curr);
 		old_dentry = (struct nova_dentry *)addr;
 		new_dentry = (struct nova_dentry *)new_addr;
 		if (sih->last_dentry == curr_p)
@@ -365,15 +367,20 @@ nova_inode_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 			if (extended)
 				blocks++;
 			/* Copy entry to the new log */
-			nova_memunlock_block(sb, nova_get_block(sb, new_curr),
-					     &irq_flags);
+			nova_memunlock_block(
+				sb,
+				nova_get_virt_addr_from_offset(sb, new_curr),
+				&irq_flags);
 			/* length seem to be short(like the data struct size). We keep the memcpy here. */
-			memcpy_to_pmem_nocache(nova_get_block(sb, new_curr),
-					       nova_get_block(sb, curr_p),
-					       length);
+			memcpy_to_pmem_nocache(
+				nova_get_virt_addr_from_offset(sb, new_curr),
+				nova_get_virt_addr_from_offset(sb, curr_p),
+				length);
 			nova_inc_page_num_entries(sb, new_curr);
-			nova_memlock_block(sb, nova_get_block(sb, new_curr),
-					   &irq_flags);
+			nova_memlock_block(
+				sb,
+				nova_get_virt_addr_from_offset(sb, new_curr),
+				&irq_flags);
 			nova_gc_assign_new_entry(sb, pi, sih, curr_p, new_curr);
 			new_curr += length;
 		}
@@ -383,8 +390,9 @@ nova_inode_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 
 	/* Step 1: Link new log to the tail block */
 	tail_block = BLOCK_OFF(sih->log_tail);
-	curr_page = (struct nova_inode_log_page *)nova_get_block(
-		sb, BLOCK_OFF(new_curr));
+	curr_page =
+		(struct nova_inode_log_page *)nova_get_virt_addr_from_offset(
+			sb, BLOCK_OFF(new_curr));
 	next = next_log_page(sb, new_curr);
 	if (next > 0)
 		nova_free_contiguous_log_blocks(sb, sih, next);
@@ -399,7 +407,7 @@ nova_inode_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 	pi->log_head = new_head;
 	nova_update_inode_checksum(pi);
 	if (metadata_csum && sih->alter_pi_addr) {
-		alter_pi = (struct nova_inode *)nova_get_block(
+		alter_pi = (struct nova_inode *)nova_get_virt_addr_from_offset(
 			sb, sih->alter_pi_addr);
 		memcpy_to_pmem_nocache(alter_pi, pi, sizeof(struct nova_inode));
 	}
@@ -407,8 +415,9 @@ nova_inode_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 	sih->log_head = new_head;
 
 	/* Step 3: Unlink the old log */
-	curr_page = (struct nova_inode_log_page *)nova_get_block(
-		sb, BLOCK_OFF(old_curr_p));
+	curr_page =
+		(struct nova_inode_log_page *)nova_get_virt_addr_from_offset(
+			sb, BLOCK_OFF(old_curr_p));
 	next = next_log_page(sb, old_curr_p);
 	if (next != tail_block) {
 		nova_err(sb, "Old log error: old curr_p 0x%lx, next 0x%lx ",
@@ -477,15 +486,18 @@ nova_inode_alter_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 
 	new_curr = new_head;
 	while (1) {
-		nova_memunlock_block(sb, nova_get_block(sb, new_curr),
-				     &irq_flags);
+		nova_memunlock_block(
+			sb, nova_get_virt_addr_from_offset(sb, new_curr),
+			&irq_flags);
 		/* TODO: 4K writes from nvmm to nvmm, shall we do delegation? */
-		memcpy_to_pmem_nocache(nova_get_block(sb, new_curr),
-				       nova_get_block(sb, curr_p),
-				       LOG_BLOCK_TAIL);
+		memcpy_to_pmem_nocache(
+			nova_get_virt_addr_from_offset(sb, new_curr),
+			nova_get_virt_addr_from_offset(sb, curr_p),
+			LOG_BLOCK_TAIL);
 
 		nova_set_alter_page_address(sb, curr_p, new_curr);
-		nova_memlock_block(sb, nova_get_block(sb, new_curr),
+		nova_memlock_block(sb,
+				   nova_get_virt_addr_from_offset(sb, new_curr),
 				   &irq_flags);
 
 		curr_p = next_log_page(sb, curr_p);
@@ -505,8 +517,9 @@ nova_inode_alter_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 
 	/* Step 1: Link new log to the tail block */
 	alter_tail_block = BLOCK_OFF(sih->alter_log_tail);
-	alter_curr_page = (struct nova_inode_log_page *)nova_get_block(
-		sb, BLOCK_OFF(new_curr));
+	alter_curr_page =
+		(struct nova_inode_log_page *)nova_get_virt_addr_from_offset(
+			sb, BLOCK_OFF(new_curr));
 	alter_next = next_log_page(sb, new_curr);
 	if (alter_next > 0)
 		nova_free_contiguous_log_blocks(sb, sih, alter_next);
@@ -535,7 +548,7 @@ nova_inode_alter_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 	pi->alter_log_head = new_head;
 	nova_update_inode_checksum(pi);
 	if (metadata_csum && sih->alter_pi_addr) {
-		alter_pi = (struct nova_inode *)nova_get_block(
+		alter_pi = (struct nova_inode *)nova_get_virt_addr_from_offset(
 			sb, sih->alter_pi_addr);
 		memcpy_to_pmem_nocache(alter_pi, pi, sizeof(struct nova_inode));
 	}
@@ -543,8 +556,9 @@ nova_inode_alter_log_thorough_gc(struct super_block *sb, struct nova_inode *pi,
 	sih->alter_log_head = new_head;
 
 	/* Step 4: Unlink the old log */
-	alter_curr_page = (struct nova_inode_log_page *)nova_get_block(
-		sb, BLOCK_OFF(old_alter_curr_p));
+	alter_curr_page =
+		(struct nova_inode_log_page *)nova_get_virt_addr_from_offset(
+			sb, BLOCK_OFF(old_alter_curr_p));
 	alter_next = next_log_page(sb, old_alter_curr_p);
 	if (alter_next != alter_tail_block) {
 		nova_err(sb, "Old log error: old curr_p 0x%lx, next 0x%lx ",
@@ -614,16 +628,15 @@ int nova_inode_log_fast_gc(struct super_block *sb, struct nova_inode *pi,
 			break;
 		}
 
-		curr_page =
-			(struct nova_inode_log_page *)nova_get_block(sb, curr);
+		curr_page = (struct nova_inode_log_page *)
+			nova_get_virt_addr_from_offset(sb, curr);
 		next = next_log_page(sb, curr);
 		if (next < 0)
 			break;
 
 		if (metadata_csum) {
-			alter_curr_page =
-				(struct nova_inode_log_page *)nova_get_block(
-					sb, alter_curr);
+			alter_curr_page = (struct nova_inode_log_page *)
+				nova_get_virt_addr_from_offset(sb, alter_curr);
 			alter_next = next_log_page(sb, alter_curr);
 			if (alter_next < 0)
 				break;
@@ -673,8 +686,8 @@ int nova_inode_log_fast_gc(struct super_block *sb, struct nova_inode *pi,
 	// TODO:  I think this belongs in nova_extend_inode_log.
 	if (num_pages > 0) {
 		curr = BLOCK_OFF(curr_tail);
-		curr_page =
-			(struct nova_inode_log_page *)nova_get_block(sb, curr);
+		curr_page = (struct nova_inode_log_page *)
+			nova_get_virt_addr_from_offset(sb, curr);
 
 		nova_memunlock_block(sb, curr_page, &irq_flags);
 		nova_set_next_page_address(sb, curr_page, new_block, 1);
@@ -686,9 +699,8 @@ int nova_inode_log_fast_gc(struct super_block *sb, struct nova_inode *pi,
 			while (next_log_page(sb, alter_curr) > 0)
 				alter_curr = next_log_page(sb, alter_curr);
 
-			alter_curr_page =
-				(struct nova_inode_log_page *)nova_get_block(
-					sb, alter_curr);
+			alter_curr_page = (struct nova_inode_log_page *)
+				nova_get_virt_addr_from_offset(sb, alter_curr);
 			nova_memunlock_block(sb, curr_page, &irq_flags);
 			nova_set_next_page_address(sb, alter_curr_page,
 						   alter_new_block, 1);
@@ -704,7 +716,7 @@ int nova_inode_log_fast_gc(struct super_block *sb, struct nova_inode *pi,
 	pi->alter_log_head = alter_possible_head;
 	nova_update_inode_checksum(pi);
 	if (metadata_csum && sih->alter_pi_addr) {
-		alter_pi = (struct nova_inode *)nova_get_block(
+		alter_pi = (struct nova_inode *)nova_get_virt_addr_from_offset(
 			sb, sih->alter_pi_addr);
 		memcpy_to_pmem_nocache(alter_pi, pi, sizeof(struct nova_inode));
 	}
