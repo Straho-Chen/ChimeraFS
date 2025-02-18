@@ -53,8 +53,6 @@ do_fio() {
         bash "$TOOLS_PATH"/mount.sh "$fs"
     fi
 
-    clean_mnt_dir "$fpath"
-
     BW=$(bash "$TOOLS_PATH"/fio.sh "$fpath" "$bsz" "$fsize" "$job" "$op" | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
 
     bash "$TOOLS_PATH"/umount.sh "$fs"
