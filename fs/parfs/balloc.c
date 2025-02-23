@@ -980,14 +980,28 @@ alloc:
 	if (zero) {
 		long issued_cnt[NOVA_MAX_SOCKET];
 		struct nova_notifyer completed_cnt[NOVA_MAX_SOCKET];
+		struct nova_sb_info *sbi = NOVA_SB(sb);
+		unsigned long irq_flags = 0;
 		memset(issued_cnt, 0, sizeof(long) * NOVA_MAX_SOCKET);
 		memset(completed_cnt, 0,
 		       sizeof(struct nova_notifyer) * NOVA_MAX_SOCKET);
 		bp = nova_get_virt_addr_from_offset(
 			sb, nova_get_block_off(sb, new_blocknr, btype));
-		do_nova_nvmm_write(sb, bp, NULL, PAGE_SIZE * ret_blocks, zero,
-				   1, 0, issued_cnt, completed_cnt, 0);
-		nova_complete_delegation(issued_cnt, completed_cnt);
+		if (sbi->delegation_ready) {
+			do_nova_nvmm_write(sb, bp, NULL, PAGE_SIZE * ret_blocks,
+					   zero, 1, 0, issued_cnt,
+					   completed_cnt, 0);
+			nova_complete_delegation(issued_cnt, completed_cnt);
+		} else {
+			nova_memunlock_range(sb, bp, PAGE_SIZE * ret_blocks,
+					     &irq_flags);
+			memset_nt(bp, 0, PAGE_SIZE * ret_blocks);
+			nova_memlock_range(sb, bp, PAGE_SIZE * ret_blocks,
+					   &irq_flags);
+
+			if (need_resched())
+				cond_resched();
+		}
 	}
 	*blocknr = new_blocknr;
 
@@ -1013,7 +1027,10 @@ static int __nova_new_one_blocks(struct super_block *sb,
 /*
  * Allocate data blocks. The offset for the allocated block comes back in blocknr.
  * Return the number of blocks allocated.
- * Allocate blocks on different sockets.
+ * Split the blocks to different sockets.
+ * On one call, we split the number of blocks to the number of sockets.
+ * On each socket, we allocate the blocks in contiguous order.
+ * So that we can add log entry for per socket contiguous blocks.
  */
 int nova_new_data_blocks(struct super_block *sb,
 			 struct nova_inode_info_header *sih,
@@ -1022,7 +1039,8 @@ int nova_new_data_blocks(struct super_block *sb,
 			 enum nova_alloc_direction from_tail)
 {
 	int allocated = 0;
-	int ret, i;
+	int ret;
+	int i;
 	INIT_TIMING(alloc_time);
 
 	NOVA_START_TIMING(new_data_blocks_t, alloc_time);
@@ -1033,18 +1051,16 @@ int nova_new_data_blocks(struct super_block *sb,
 					    from_tail);
 
 		if (ret < 0) {
-			nova_dbg_verbose(
-				"FAILED: Inode %lu, start blk %lu, "
-				"alloc %d data blocks from %lu to %lu\n",
-				sih->ino, start_blk, allocated, *blocknr,
-				*blocknr + allocated - 1);
+			nova_dbg_verbose("FAILED: Inode %lu, start blk %lu, "
+					 "alloc %d data blocks %lu\n",
+					 sih->ino, start_blk, allocated,
+					 *blocknr);
 		} else {
 			allocated++;
-			nova_dbg_verbose(
-				"Inode %lu, start blk %lu, "
-				"alloc %d data blocks from %lu to %lu\n",
-				sih->ino, start_blk, allocated, *blocknr,
-				*blocknr + allocated - 1);
+			nova_dbg_verbose("Inode %lu, start blk %lu, "
+					 "alloc %d data blocks %lu\n",
+					 sih->ino, start_blk, allocated,
+					 *blocknr);
 		}
 	}
 

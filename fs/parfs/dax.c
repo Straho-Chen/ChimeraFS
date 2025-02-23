@@ -563,6 +563,24 @@ out:
 	return ent_blks;
 }
 
+void check_alter_pages(struct super_block *sb, u64 curr_p)
+{
+	if (curr_p == 0)
+		return;
+	void *addr = (void *)nova_get_virt_addr_from_offset(sb, curr_p);
+	struct nova_file_write_entry *entry =
+		(struct nova_file_write_entry *)addr;
+	u64 entry_off = nova_get_addr_off(NOVA_SB(sb), entry);
+	u64 alter_off = alter_log_entry(sb, entry_off);
+	void *alter = (void *)nova_get_virt_addr_from_offset(sb, alter_off);
+	nova_dbg("%s: entry_off: %#llx, alter_off: %#llx, alter: %#llx\n",
+		 __func__, entry_off, alter_off, (u64)alter);
+	if (pmem_ar_addr_invaild(alter)) {
+		nova_err(sb, "%s: alter entry address invalid\n", __func__);
+		dump_stack();
+	}
+}
+
 /*
  * Do an inplace write.  This function assumes that the lock on the inode is
  * already held.
@@ -605,8 +623,9 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 	u32 time;
 	ssize_t ret;
 	unsigned long irq_flags = 0;
-	bool start_delegation = false;
+	int blocks_per_strip = 0;
 
+	int cond_cnt = 0;
 	long issued_cnt[NOVA_MAX_SOCKET];
 	struct nova_notifyer completed_cnt[NOVA_MAX_SOCKET];
 
@@ -657,27 +676,28 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 
 	epoch_id = nova_get_epoch_id(sb);
 
+	blocks_per_strip = nova_get_numblocks(pi->i_blk_type);
+
 	nova_dbg_verbose(
 		"%s: epoch_id %llu, inode %lu, offset %lld, count %lu\n",
 		__func__, epoch_id, inode->i_ino, pos, count);
 	update.tail = sih->log_tail;
 	update.alter_tail = sih->alter_log_tail;
+
 	while (num_blocks > 0) {
 		hole_fill = false;
 		offset = pos & (nova_inode_blk_size(sih) - 1);
 		start_blk = pos >> sb->s_blocksize_bits;
 
-		ent_blks = nova_check_existing_entry(sb, inode, num_blocks,
-						     start_blk, &entry,
-						     &entry_copy, 1, epoch_id,
-						     &inplace, 1);
+		ent_blks = nova_check_existing_entry(
+			sb, inode, blocks_per_strip, start_blk, &entry,
+			&entry_copy, 1, epoch_id, &inplace, 1);
 
 		entryc = (metadata_csum == 0) ? entry : &entry_copy;
 
 		if (entry && inplace) {
 			/* We can do inplace write. Find contiguous blocks */
 			blocknr = get_nvmm(sb, sih, entryc, start_blk);
-			blk_off = blocknr << PAGE_SHIFT;
 			allocated = ent_blks;
 			if (data_csum || data_parity)
 				nova_set_write_entry_updating(sb, entry, 1);
@@ -700,8 +720,6 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 
 			hole_fill = true;
 			new_blocks += allocated;
-			blk_off = nova_get_block_off(sb, blocknr,
-						     sih->i_blk_type);
 		}
 
 		step++;
@@ -709,6 +727,7 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 		if (bytes > count)
 			bytes = count;
 
+		blk_off = nova_get_block_off(sb, blocknr, sih->i_blk_type);
 		kmem = nova_get_virt_addr_from_offset(inode->i_sb, blk_off);
 
 		if (hole_fill &&
@@ -722,11 +741,14 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 		}
 
 		/* Now copy from user buf */
+		nova_dbg_verbose("%s: copy from %#llx to %#llx\n", __func__,
+				 nova_get_addr_off(NOVA_SB(sb), kmem + offset),
+				 nova_get_addr_off(NOVA_SB(sb),
+						   kmem + offset + bytes));
 		copied = bytes - do_nova_nvmm_write(
 					 sb, kmem + offset, (void *)buf, bytes,
 					 0, 1, 0, issued_cnt, completed_cnt,
 					 len >= NOVA_WRITE_WAIT_THRESHOLD);
-		start_delegation = true;
 
 		if (data_csum > 0 || data_parity > 0) {
 			ret = nova_protect_file_data(sb, inode, pos, bytes, buf,
@@ -795,6 +817,28 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 			if (begin_tail == 0)
 				begin_tail = update.curr_entry;
 		}
+
+		if (update_log) {
+			nova_memunlock_inode(sb, pi, &irq_flags);
+			nova_update_inode(sb, inode, pi, &update, 1);
+			nova_memlock_inode(sb, pi, &irq_flags);
+			NOVA_STATS_ADD(inplace_new_blocks, 1);
+
+			/* Update file tree */
+			ret = nova_reassign_file_tree(sb, sih, begin_tail);
+			if (ret)
+				goto out;
+			update_log = false;
+			begin_tail = 0;
+			hole_fill = false;
+		}
+
+		cond_cnt++;
+		if (cond_cnt >= NOVA_APP_RING_BUFFER_CHECK_COUNT) {
+			cond_cnt = 0;
+			if (need_resched())
+				cond_resched();
+		}
 	}
 
 	data_bits = blk_type_to_shift[sih->i_blk_type];
@@ -802,21 +846,9 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 
 	inode->i_blocks = sih->i_blocks;
 
-	if (update_log) {
-		nova_memunlock_inode(sb, pi, &irq_flags);
-		nova_update_inode(sb, inode, pi, &update, 1);
-		nova_memlock_inode(sb, pi, &irq_flags);
-		NOVA_STATS_ADD(inplace_new_blocks, 1);
-
-		/* Update file tree */
-		ret = nova_reassign_file_tree(sb, sih, begin_tail);
-		if (ret)
-			goto out;
-	}
-
 	ret = written;
 	NOVA_STATS_ADD(inplace_write_breaks, step);
-	nova_dbg_verbose("blocks: %lu, %lu\n", inode->i_blocks, sih->i_blocks);
+	nova_dbg_verbose("blocks: %llu, %lu\n", inode->i_blocks, sih->i_blocks);
 
 	*ppos = pos;
 	if (pos > inode->i_size) {
@@ -826,18 +858,19 @@ ssize_t do_nova_inplace_file_write(struct file *filp, const char __user *buf,
 
 	sih->trans_id++;
 out:
-	if (start_delegation) {
-		/* TODO: We actually need to stop the delegation */
-		NOVA_START_TIMING(fini_delegation_w_t, fini_delegation_time);
-		nova_complete_delegation(issued_cnt, completed_cnt);
-		NOVA_END_TIMING(fini_delegation_w_t, fini_delegation_time);
-	}
+	NOVA_START_TIMING(fini_delegation_w_t, fini_delegation_time);
+	nova_complete_delegation(issued_cnt, completed_cnt);
+	NOVA_END_TIMING(fini_delegation_w_t, fini_delegation_time);
+
 	if (ret < 0)
 		nova_cleanup_incomplete_write(sb, sih, blocknr, allocated,
 					      begin_tail, update.tail);
 
 	NOVA_END_TIMING(inplace_write_t, inplace_write_time);
 	NOVA_STATS_ADD(inplace_write_bytes, written);
+	nova_dbg_verbose(
+		"%s: finished epoch_id %llu, inode %lu, offset %lld, count %lu\n",
+		__func__, epoch_id, inode->i_ino, pos, count);
 	return ret;
 }
 

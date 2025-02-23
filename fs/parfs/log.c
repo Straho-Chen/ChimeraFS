@@ -445,6 +445,11 @@ static int nova_append_log_entry(struct super_block *sb, struct nova_inode *pi,
 	if (metadata_csum) {
 		alter_curr_p = nova_get_append_head(
 			sb, pi, sih, alter_tail, size, ALTER_LOG, 0, &extended);
+
+		nova_dbg_verbose(
+			"%s: inode %lu attr change alter entry @ 0x%llx\n",
+			__func__, sih->ino, alter_curr_p);
+
 		if (alter_curr_p == 0)
 			return -ENOSPC;
 
@@ -1072,6 +1077,8 @@ int nova_update_alter_pages(struct super_block *sb, struct nova_inode *pi,
 		return 0;
 
 	while (curr && alter_curr) {
+		nova_dbg_verbose("%s: update ino: %lld page: %#llx alter: %#llx\n",
+			 __func__, pi->nova_ino, curr, alter_curr);
 		nova_set_alter_page_address(sb, curr, alter_curr);
 		curr = next_log_page(sb, curr);
 		alter_curr = next_log_page(sb, alter_curr);
@@ -1376,7 +1383,12 @@ u64 nova_get_append_head(struct super_block *sb, struct nova_inode *pi,
 			return 0;
 
 		if (thorough_gc == 0) {
+			nova_dbg_verbose("%s: %s, curr_p: %#llx", __func__,
+					 (log_id == MAIN_LOG) ? "MAIN_LOG" :
+								"ALTER_LOG",
+					 curr_p);
 			curr_p = nova_extend_inode_log(sb, pi, sih, curr_p);
+			nova_dbg_verbose("Extend log to %#llx\n", curr_p);
 		} else {
 			curr_p = nova_append_one_log_page(sb, sih, curr_p);
 			/* For thorough GC */

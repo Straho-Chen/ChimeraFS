@@ -569,6 +569,7 @@ static inline void set_default_opts(struct nova_sb_info *sbi)
 	sbi->tail_reserved_blocks = TAIL_RESERVED_BLOCKS;
 	sbi->cpus = num_online_cpus();
 	sbi->sockets = pmem_ar_dev.elem_num;
+	sbi->delegation_ready = 0;
 	nova_info("%d cpus online\n", sbi->cpus);
 	sbi->map_id = 0;
 	sbi->snapshot_si = NULL;
@@ -705,18 +706,6 @@ static int nova_fill_super(struct super_block *sb, void *data, int silent)
 	retval = nova_get_nvmm_info(sb, sbi);
 	if (retval) {
 		nova_err(sb, "%s: Failed to get nvmm info.", __func__);
-		goto out;
-	}
-
-	retval = nova_init_ring_buffers(sbi->sockets);
-	if (retval) {
-		nova_err(sb, "Failed to initialize ring buffers\n");
-		goto out;
-	}
-
-	retval = nova_init_agents(sbi->cpus, sbi->sockets);
-	if (retval) {
-		nova_err(sb, "Failed to initialize agents\n");
 		goto out;
 	}
 
@@ -886,6 +875,20 @@ setup_sb:
 
 	if (!(sb->s_flags & MS_RDONLY))
 		nova_update_mount_time(sb);
+
+	retval = nova_init_ring_buffers(sbi->sockets);
+	if (retval) {
+		nova_err(sb, "Failed to initialize ring buffers\n");
+		goto out;
+	}
+
+	retval = nova_init_agents(sbi->cpus, sbi->sockets);
+	if (retval) {
+		nova_err(sb, "Failed to initialize agents\n");
+		goto out;
+	}
+
+	sbi->delegation_ready = 1;
 
 	nova_print_curr_epoch_id(sb);
 

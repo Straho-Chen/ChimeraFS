@@ -224,6 +224,7 @@ int nova_update_alter_entry(struct super_block *sb, void *entry)
 
 	curr = nova_get_addr_off(sbi, entry);
 	alter_curr = alter_log_entry(sb, curr);
+
 	if (alter_curr == 0) {
 		nova_err(sb, "%s: log page tail error detected\n", __func__);
 		return -EIO;

@@ -671,7 +671,7 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 	u64 epoch_id;
 	u32 time;
 	unsigned long irq_flags = 0;
-	bool start_delegation = false;
+	int blocks_per_strip = 0;
 
 	int cond_cnt = 0;
 	long issued_cnt[NOVA_MAX_SOCKET];
@@ -733,10 +733,13 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 	inode->i_mtime = inode_set_ctime_current(inode);
 	time = inode->i_mtime.tv_sec;
 
-	nova_dbg_verbose("%s: inode %lu, offset %lld, count %lu\n", __func__,
-			 inode->i_ino, pos, count);
-
 	epoch_id = nova_get_epoch_id(sb);
+
+	blocks_per_strip = nova_get_numblocks(pi->i_blk_type);
+
+	nova_dbg_verbose(
+		"%s: epoch_id %llu, inode %lu, offset %lld, count %lu\n",
+		__func__, epoch_id, inode->i_ino, pos, count);
 	update.tail = sih->log_tail;
 	update.alter_tail = sih->alter_log_tail;
 	while (num_blocks > 0) {
@@ -745,8 +748,9 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 
 		/* don't zero-out the allocated blocks */
 		allocated = nova_new_data_blocks(sb, sih, &blocknr, start_blk,
-						 num_blocks, ALLOC_NO_INIT,
-						 ANY_CPU, ALLOC_FROM_HEAD);
+						 blocks_per_strip,
+						 ALLOC_NO_INIT, ANY_CPU,
+						 ALLOC_FROM_HEAD);
 
 		nova_dbg_verbose("%s: alloc %d blocks @ %lu\n", __func__,
 				 allocated, blocknr);
@@ -784,7 +788,6 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 					 sb, kmem + offset, (void *)buf, bytes,
 					 0, 1, 0, issued_cnt, completed_cnt,
 					 len >= NOVA_WRITE_WAIT_THRESHOLD);
-		start_delegation = true;
 
 		if (data_csum > 0 || data_parity > 0) {
 			/* calculate data checksum and write csum to pmem */
@@ -835,6 +838,18 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 		if (begin_tail == 0)
 			begin_tail = update.curr_entry;
 
+		nova_memunlock_inode(sb, pi, &irq_flags);
+		// update inode (pi->log_tail); like Jc
+		nova_update_inode(sb, inode, pi, &update, 1);
+		nova_memlock_inode(sb, pi, &irq_flags);
+
+		/* Free the overlap blocks after the write is committed */
+		ret = nova_reassign_file_tree(sb, sih, begin_tail);
+		if (ret)
+			goto out;
+
+		begin_tail = 0;
+
 		cond_cnt++;
 		if (cond_cnt >= NOVA_APP_RING_BUFFER_CHECK_COUNT) {
 			cond_cnt = 0;
@@ -846,21 +861,11 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 	data_bits = blk_type_to_shift[sih->i_blk_type];
 	sih->i_blocks += (total_blocks << (data_bits - sb->s_blocksize_bits));
 
-	nova_memunlock_inode(sb, pi, &irq_flags);
-	// update inode (pi->log_tail); like Jc
-	nova_update_inode(sb, inode, pi, &update, 1);
-	nova_memlock_inode(sb, pi, &irq_flags);
-
-	/* Free the overlap blocks after the write is committed */
-	ret = nova_reassign_file_tree(sb, sih, begin_tail);
-	if (ret)
-		goto out;
-
 	inode->i_blocks = sih->i_blocks;
 
 	ret = written;
 	NOVA_STATS_ADD(cow_write_breaks, step);
-	nova_dbg_verbose("blocks: %lu, %lu\n", inode->i_blocks, sih->i_blocks);
+	nova_dbg_verbose("blocks: %llu, %lu\n", inode->i_blocks, sih->i_blocks);
 
 	*ppos = pos;
 	if (pos > inode->i_size) {
@@ -870,12 +875,10 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 
 	sih->trans_id++;
 out:
-	if (start_delegation) {
-		/* TODO: We actually need to stop the delegation */
-		NOVA_START_TIMING(fini_delegation_w_t, fini_delegation_time);
-		nova_complete_delegation(issued_cnt, completed_cnt);
-		NOVA_END_TIMING(fini_delegation_w_t, fini_delegation_time);
-	}
+	/* TODO: We actually need to stop the delegation */
+	NOVA_START_TIMING(fini_delegation_w_t, fini_delegation_time);
+	nova_complete_delegation(issued_cnt, completed_cnt);
+	NOVA_END_TIMING(fini_delegation_w_t, fini_delegation_time);
 	if (ret < 0)
 		nova_cleanup_incomplete_write(sb, sih, blocknr, allocated,
 					      begin_tail, update.tail);
@@ -885,6 +888,10 @@ out:
 
 	if (try_inplace)
 		return do_nova_inplace_file_write(filp, buf, len, ppos);
+
+	nova_dbg_verbose(
+		"%s: finished epoch_id %llu, inode %lu, offset %lld, count %lu\n",
+		__func__, epoch_id, inode->i_ino, pos, count);
 
 	return ret;
 }

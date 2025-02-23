@@ -937,7 +937,7 @@ static inline size_t do_nova_nvmm_read(struct super_block *sb, void *ubuf_dest,
 	INIT_TIMING(memcpy_time);
 	INIT_TIMING(delegation_time);
 
-	if (bytes < NOVA_WRITE_DELEGATION_LIMIT) {
+	if (bytes < NOVA_READ_DELEGATION_LIMIT) {
 		nova_dbg_verbose("less than delegation limit\n");
 		NOVA_START_TIMING(memcpy_r_nvmm_t, memcpy_time);
 
