@@ -1,3 +1,4 @@
+import os
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -29,6 +30,49 @@ def parse_data(filename):
 filename = "performance-comparison-table-compare"  # 替换为您的文件路径
 data = parse_data(filename)
 
+cur_dir = os.path.abspath(os.path.dirname(__file__))
+parent_dir = os.path.dirname(cur_dir)
+raw_perf_file = os.path.join(parent_dir, "raw-pm-perf", "perf-saved")
+
+raw_data = parse_data(raw_perf_file)
+
+# 找到raw_data中每个操作的最大带宽，以及对应的numjobs
+max_bandwidth = {ops: 0 for ops in set(raw_data["ops"])}
+max_numjobs = {ops: 0 for ops in set(raw_data["ops"])}
+for ops in set(raw_data["ops"]):
+    subset = raw_data[raw_data["ops"] == ops]
+    max_bandwidth[ops] = subset["bandwidth"].max()
+    max_numjobs[ops] = subset[subset["bandwidth"] == max_bandwidth[ops]]["numjobs"].values[0]
+
+new_raw_data = []
+# 从raw_data拷贝每个操作的最大带宽对应的numjobs之前的数据
+for ops in set(raw_data["ops"]):
+    subset = raw_data[raw_data["ops"] == ops]
+    max_numjob = max_numjobs[ops]
+    new_raw_data.extend(subset[subset["numjobs"] <= max_numjob].to_dict("records"))
+
+# 扩展new_raw_data中每个操作的最大带宽对应的numjobs之后的数据
+for ops in set(raw_data["ops"]):
+    subset = raw_data[raw_data["ops"] == ops]
+    max_numjob = max_numjobs[ops]
+    max_bandwidth_val = max_bandwidth[ops]
+    for numjobs in range(max_numjob + 1, 65, 1):
+        new_raw_data.append({
+            "fs": subset["fs"].values[0],
+            "ops": ops,
+            "filesz": subset["filesz"].values[0],
+            "blksz": subset["blksz"].values[0],
+            "numjobs": numjobs,
+            "bandwidth": max_bandwidth_val
+        })
+
+# 根据data中的numjobs值，将new_raw_data中不在data的numjobs值的数据删除
+data_numjobs = set(data["numjobs"])
+new_raw_data = [d for d in new_raw_data if d["numjobs"] in data_numjobs]
+
+# 将raw_data中的数据合并到data中
+data = pd.concat([data, pd.DataFrame(new_raw_data)], ignore_index=True)
+
 # 按操作类型分组
 fs_list = sorted(set(data["fs"]))
 ops_list = sorted(set(data["ops"]))
@@ -47,13 +91,6 @@ for fs in fs_list:
 fig, axs = plt.subplots(2, 2, figsize=(12, 10))
 axs = axs.flatten()
 
-theoretical_bandwidth = {
-    "read": 49.7,
-    "write": 10.7,
-    "randread": 51.1,
-    "randwrite": 10.7
-}
-
 # 绘制每个操作类型的子图
 for i, ops in enumerate(ops_list):
     ax = axs[i]
@@ -68,7 +105,6 @@ for i, ops in enumerate(ops_list):
             marker='o'
         )
     
-    ax.axhline(y=theoretical_bandwidth[ops], color='r', linestyle='--', label='Theoretical Performance')
     ax.set_title(ops)
     ax.set_xlabel("Number of Threads")
     ax.set_ylabel("Bandwidth (GiB/s)")
