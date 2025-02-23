@@ -8,12 +8,13 @@ echo 262144 >/proc/sys/vm/max_map_count
 
 echo performance | sudo tee /sys/devices/system/cpu/cpu*/cpufreq/scaling_governor
 
-timing=1
+timing=0
 data_checksum=1
 metadata_checksum=1
 
 chsm_fs=(nova parfs)
-fs=(pmfs nova winefs odinfs parfs)
+# fs=(pmfs nova winefs odinfs parfs)
+fs=(parfs)
 
 # Work around, will fix
 sudo rm -rf /dev/pmem_ar*

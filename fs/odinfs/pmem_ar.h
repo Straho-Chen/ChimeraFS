@@ -9,8 +9,8 @@
 #define SODINFS_PMEM_AR_H_
 
 #define SODINFS_MAJOR 263
-#define SODINFS_DEV_NAME "pmem_ar"
-#define SODINFS_DEV_INSTANCE_NAME "pmem_ar0"
+#define SODINFS_DEV_NAME "odinfs_pmem_ar"
+#define SODINFS_DEV_INSTANCE_NAME "odinfs_pmem_ar0"
 #define SODINFS_PMEM_AR_NUM 1
 
 #define ODINFS_PMEM_AR_MAX_DEVICE 8

@@ -10,7 +10,7 @@ ABS_PATH=$(where_is_script "$0")
 FIO=$ABS_PATH/../benchmark/bin/fio/bin/fio
 
 DIR=$1
-BS=$2   # in KB
+BS=$2   # in B
 SIZE=$3 # in MB
 THREADS=$4
 MODE=$5
@@ -30,5 +30,6 @@ echo "bs=$BS" >>$fio_config
 echo "size=${SIZE}M" >>$fio_config
 echo "numjobs=$THREADS" >>$fio_config
 echo "rw=$MODE" >>$fio_config
+echo "stonewall" >>$fio_config
 
 $FIO $fio_config
