@@ -6,6 +6,9 @@ import os
 CUR_DIR = os.path.abspath(os.path.dirname(__file__))
 NUMA_CONFIG_DIR = os.path.join(CUR_DIR, "config/numa")
 
+NUMA0_MNT_PATH = "/mnt/pmem0"
+NUMA1_MNT_PATH = "/mnt/pmem1"
+
 def numa_mem_info(numa_node):
     info="numa_cpu_nodes={}\nnuma_mem_policy=bind:{}\n".format(numa_node, numa_node)
     return info
@@ -49,12 +52,16 @@ if __name__ == "__main__":
         f.write(info)
         f.write(numa_0_cpus)
         f.write("\n")
+        f.write("directory=" + NUMA0_MNT_PATH)
+        f.write("\n")
         f.close()
 
         f = open(os.path.join(NUMA_CONFIG_DIR, "numa1.fio"), "w")
         info= numa_mem_info(1)
         f.write(info)
         f.write(numa_1_cpus)
+        f.write("\n")
+        f.write("directory=" + NUMA1_MNT_PATH)
         f.write("\n")
         f.close()
     else:

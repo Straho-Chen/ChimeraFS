@@ -12,10 +12,11 @@ WRITE_LOG_DIR=$ABS_PATH/write-log
 
 LOG_PREFIX="fio-output"
 
-FILE_SYSTEMS=("EXT4-DAX")
-file_system=${FILE_SYSTEMS[0]}
+NUM_JOBS=(1 2 4 8 16 28 32 48 56)
 
-NUM_JOBS=(1 2 4 8 16)
+BLK_SIZES=($((4 * 1024)) $((32 * 1024)) $((2 * 1024 * 1024)))
+
+FILE_SIZES=($((2 * 1024)))
 
 max_jobs=${NUM_JOBS[0]}
 
@@ -33,9 +34,10 @@ TABLE_NAME="$ABS_PATH/perf"
 table_create "$TABLE_NAME" "fs ops filesz blksz numjobs bandwidth(MiB/s)"
 
 do_fio() {
-    local fs=$1
-    local op=$2
-    local job=$3
+    local op=$1
+    local bsize=$2
+    local fsize=$3
+    local job=$4
 
     if [[ "$op" == "write" || "$op" == "randwrite" ]]; then
         grep_sign="WRITE:"
@@ -45,8 +47,8 @@ do_fio() {
 
     drop_cache
 
-    ./run-fio.sh $op numa0 $job $READ_LOG_DIR $LOG_PREFIX &
-    ./run-fio.sh $op numa1 $job $READ_LOG_DIR $LOG_PREFIX &
+    ./run-fio.sh $op numa0 $bsize $fsize $job $READ_LOG_DIR $LOG_PREFIX &
+    ./run-fio.sh $op numa1 $bsize $fsize $job $READ_LOG_DIR $LOG_PREFIX &
 
     if wait; then
         echo "All fio tests are done"
@@ -60,7 +62,7 @@ do_fio() {
 
     BW=$(echo "$numa0_bw + $numa1_bw" | bc)
 
-    table_add_row "$TABLE_NAME" "$fs $op 1024 2048 $job $BW"
+    table_add_row "$TABLE_NAME" "raw $op $fsize $bsize $job $BW"
 }
 
 # mount pmem0 and pmem1
@@ -81,30 +83,31 @@ sudo chown $USER /mnt/pmem1/
 # init numa info
 python3 "$ABS_PATH"/numa-info.py
 
-# init fio test
-./run-fio.sh read numa0 $max_jobs $READ_LOG_DIR $LOG_PREFIX &
-./run-fio.sh read numa1 $max_jobs $READ_LOG_DIR $LOG_PREFIX &
+for fsize in "${FILE_SIZES[@]}"; do
+    for bsize in "${BLK_SIZES[@]}"; do
 
-if wait; then
-    echo "All fio preparation are done"
-else
-    echo "Some fio preparation failed"
-fi
+        # init fio test
+        ./run-fio.sh read numa0 $bsize $fsize $max_jobs $READ_LOG_DIR $LOG_PREFIX &
+        ./run-fio.sh read numa1 $bsize $fsize $max_jobs $READ_LOG_DIR $LOG_PREFIX &
 
-for numjobs in "${NUM_JOBS[@]}"; do
-    # call fio test on dual socket
-    # both read
-    do_fio "$file_system" "read" $numjobs
+        if wait; then
+            echo "All fio preparation are done"
+        else
+            echo "Some fio preparation failed"
+        fi
 
-    # both randread
-    do_fio "$file_system" "randread" $numjobs
-
-    # both write
-    do_fio "$file_system" "write" $numjobs
-
-    # both randwrite
-    do_fio "$file_system" "randwrite" $numjobs
-
+        for numjobs in "${NUM_JOBS[@]}"; do
+            # call fio test on dual socket
+            # both write
+            do_fio "write" $bsize $fsize $numjobs
+            # both randwrite
+            do_fio "randwrite" $bsize $fsize $numjobs
+            # both read
+            do_fio "read" $bsize $fsize $numjobs
+            # both randread
+            do_fio "randread" $bsize $fsize $numjobs
+        done
+    done
 done
 
 umount /mnt/pmem0

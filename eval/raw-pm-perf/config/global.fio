@@ -1,7 +1,7 @@
 [global]
-bs=2m
-size=10g
+size=2g
 ioengine=libpmem
+fallocate=none
 norandommap
 group_reporting
 invalidate=1
@@ -13,8 +13,6 @@ clat_percentiles=0
 iodepth=1
 iodepth_batch=1
 thread
-numjobs=8
-runtime=30s
 
 #
 # depends on direct option, flags are set for pmem_memcpy() call:
@@ -59,4 +57,3 @@ cpus_allowed_policy=split
 # as iostat will not provide useful data.
 #
 #filename=/mnt/pmem/somefile
-directory=/mnt/pmem1
