@@ -702,6 +702,14 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
 					     ppos, block, odinfs_issued_cnt,
 					     odinfs_completed_cnt, len);
 		ODINFS_END_TIMING(xip_write_fast_t, xip_write_fast_time);
+
+#if ODINFS_DELEGATION_ENABLE
+		ODINFS_START_TIMING(fini_delegation_w_t, fini_delegation_time);
+		odinfs_complete_delegation(odinfs_issued_cnt,
+					   odinfs_completed_cnt);
+		ODINFS_END_TIMING(fini_delegation_w_t, fini_delegation_time);
+#endif
+
 		goto out;
 	}
 
@@ -767,6 +775,13 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
 					  odinfs_issued_cnt,
 					  odinfs_completed_cnt, len);
 
+	/* should be wait here, otherwise the consistency is not guaranteed. */
+#if ODINFS_DELEGATION_ENABLE
+	ODINFS_START_TIMING(fini_delegation_w_t, fini_delegation_time);
+	odinfs_complete_delegation(odinfs_issued_cnt, odinfs_completed_cnt);
+	ODINFS_END_TIMING(fini_delegation_w_t, fini_delegation_time);
+#endif
+
 	if (written < 0 || written != count)
 		odinfs_dbg_verbose(
 			"write incomplete/failed: written %ld len %ld"
@@ -777,13 +792,6 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
 	ret = written;
 
 out:
-
-#if ODINFS_DELEGATION_ENABLE
-	ODINFS_START_TIMING(fini_delegation_w_t, fini_delegation_time);
-	odinfs_complete_delegation(odinfs_issued_cnt, odinfs_completed_cnt);
-	ODINFS_END_TIMING(fini_delegation_w_t, fini_delegation_time);
-#endif
-
 #if ODINFS_FINE_GRAINED_LOCK
 	if (fast_path) {
 		RANGE_WRITE_UNLOCK(get_range_lock(inode), get_start_range(),
