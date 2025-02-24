@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
+blksize="2m"
+
 # 解析文件并将数据组织为DataFrame
 def parse_data(filename):
     # 用于存储解析结果
@@ -10,8 +12,8 @@ def parse_data(filename):
     
     with open(filename, 'r') as file:
         lines = file.readlines()
-        for line in lines[1:]:
-            if line.strip():  # 跳过空行
+        for line in lines:
+            if line.strip() and not line.startswith("fs ops filesz blksz numjobs bandwidth(MiB/s)"):
                 parts = line.split()
                 if len(parts) == 6:  # 确保行包含正确数量的列
                     fs, ops, filesz, blksz, numjobs, bandwidth = parts
@@ -21,18 +23,18 @@ def parse_data(filename):
                         "filesz": int(filesz),
                         "blksz": int(blksz),
                         "numjobs": int(numjobs),
-                        "bandwidth": float(bandwidth) / 1024
+                        "bandwidth": float(bandwidth) / 1024  # 将带宽转换为GiB/s
                     })
     
     return pd.DataFrame(data)
 
 # 读取数据
-filename = "performance-comparison-table-compare"  # 替换为您的文件路径
+filename = f"performance-comparison-table-odinfs-blksize-{blksize}"  # 替换为您的文件路径
 data = parse_data(filename)
 
 cur_dir = os.path.abspath(os.path.dirname(__file__))
 parent_dir = os.path.dirname(cur_dir)
-raw_perf_file = os.path.join(parent_dir, "raw-pm-perf", "perf-saved")
+raw_perf_file = os.path.join(parent_dir, "raw-pm-perf", f"perf-saved-{blksize}")
 
 raw_data = parse_data(raw_perf_file)
 

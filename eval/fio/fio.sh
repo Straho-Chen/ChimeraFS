@@ -9,15 +9,18 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-FS=("ext4" "ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
+# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
-DELEGATION_FS=("odinfs" "odinfs-single-pm" "parfs" "parfs-single-pm")
+# DELEGATION_FS=("odinfs" "parfs")
+DELEGATION_FS=("parfs")
 
-FILE_SIZES=($((1 * 1024)))
+# in MB
+TOTAL_FILE_SIZE=$((32 * 1024))
 
-NUM_JOBS=(1 2 4 8 16 28 32 48 56 64)
+NUM_JOBS=(1 2 4 8 16 28 32 48 56)
 
-BLK_SIZES=($((4 * 1024)))
+# in B
+BLK_SIZES=($((4 * 1024)) $((32 * 1024)) $((2 * 1024 * 1024)))
 
 DEL_THRDS=(1 2 4 8 12)
 
@@ -66,18 +69,17 @@ do_fio() {
 
 # for normal fs
 
-for ((i = 1; i <= loop; i++)); do
-    for fs in "${FS[@]}"; do
-        for fsize in "${FILE_SIZES[@]}"; do
-            for bsz in "${BLK_SIZES[@]}"; do
-                for job in "${NUM_JOBS[@]}"; do
+for fs in "${FS[@]}"; do
+    for bsz in "${BLK_SIZES[@]}"; do
+        for job in "${NUM_JOBS[@]}"; do
+            fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
+            for ((i = 1; i <= loop; i++)); do
 
-                    do_fio "$fs" "write" "$fsize" "$bsz" "$job"
-                    do_fio "$fs" "read" "$fsize" "$bsz" "$job"
-                    do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
-                    do_fio "$fs" "randread" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "write" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "read" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "randread" "$fsize" "$bsz" "$job"
 
-                done
             done
         done
     done
@@ -85,19 +87,18 @@ done
 
 # for delegation fs
 
-for ((i = 1; i <= loop; i++)); do
-    for fs in "${DELEGATION_FS[@]}"; do
-        for del_thrds in "${DEL_THRDS[@]}"; do
-            for fsize in "${FILE_SIZES[@]}"; do
-                for bsz in "${BLK_SIZES[@]}"; do
-                    for job in "${NUM_JOBS[@]}"; do
+for fs in "${DELEGATION_FS[@]}"; do
+    for del_thrds in "${DEL_THRDS[@]}"; do
+        for bsz in "${BLK_SIZES[@]}"; do
+            for job in "${NUM_JOBS[@]}"; do
+                fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
+                for ((i = 1; i <= loop; i++)); do
 
-                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds"
+                    do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
+                    do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds"
+                    do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
+                    do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds"
 
-                    done
                 done
             done
         done

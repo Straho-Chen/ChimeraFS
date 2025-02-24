@@ -1,3 +1,4 @@
+fs ops filesz blksz numjobs bandwidth(MiB/s)
 raw write 2048 2097152 1 8316
 raw randwrite 2048 2097152 1 9278
 raw read 2048 2097152 1 7910
