@@ -395,25 +395,60 @@ process_request:
 	return err;
 }
 
+int **cpu_topology(void)
+{
+	int i;
+	int **socket_cpu;
+	int *socket_index;
+	int cpus_per_socket = num_online_cpus() / num_online_nodes();
+	socket_cpu =
+		(int **)kmalloc(sizeof(int *) * num_online_nodes(), GFP_KERNEL);
+	socket_index =
+		(int *)kmalloc(sizeof(int) * num_online_nodes(), GFP_KERNEL);
+	for (i = 0; i < num_online_nodes(); i++) {
+		socket_cpu[i] = (int *)kmalloc(sizeof(int) * cpus_per_socket,
+					       GFP_KERNEL);
+		socket_index[i] = 0;
+	}
+	for_each_online_cpu(i) {
+		int node = cpu_to_node(i);
+		int *index = &socket_index[node];
+		socket_cpu[node][*index] = i;
+		(*index)++;
+	}
+	kfree(socket_index);
+
+	return socket_cpu;
+}
+
+void cpu_topology_free(int **socket_cpu)
+{
+	int i;
+	for (i = 0; i < num_online_nodes(); i++) {
+		kfree(socket_cpu[i]);
+	}
+	kfree(socket_cpu);
+}
+
 int odinfs_init_agents(int cpus, int sockets)
 {
 	int i = 0, j = 0;
 	int ret = 0;
 
 	char name[255];
-#if ODINFS_DELE_THREAD_BIND_TO_NUMA
-	struct cpumask *numa_cpumask;
-#endif
 	memset(odinfs_agent_tasks, 0,
 	       sizeof(struct task_struct *) * ODINFS_MAX_AGENT);
 
 	cpus_per_socket = num_online_cpus() / num_online_nodes();
 	odinfs_num_of_agents = sockets * odinfs_dele_thrds;
 
+	// get cpu topology
+	int **socket_cpu = cpu_topology();
+
 	for (i = 0; i < sockets; i++) {
 		for (j = 0; j < odinfs_dele_thrds; j++) {
 			/* Use the first few cpus of each socket */
-			int target_cpu = i * cpus_per_socket + j;
+			int target_cpu = socket_cpu[i][j];
 			int index = i * odinfs_dele_thrds + j;
 			struct task_struct *task;
 
@@ -428,8 +463,8 @@ int odinfs_init_agents(int cpus, int sockets)
 			sprintf(name, "odinfs_agent_%d_cpu_%d", index,
 				target_cpu);
 
-			task = kthread_create(agent_func,
-					      &odinfs_agent_args[index], name);
+			task = kthread_create_on_node(
+				agent_func, &odinfs_agent_args[index], i, name);
 
 			if (IS_ERR(task)) {
 				ret = PTR_ERR(task);
@@ -438,20 +473,18 @@ int odinfs_init_agents(int cpus, int sockets)
 
 			odinfs_agent_tasks[index] = task;
 
-#if ODINFS_DELE_THREAD_BIND_TO_NUMA
-			numa_cpumask = cpumask_of_node(i);
-			kthread_bind_mask(odinfs_agent_tasks[index],
-					  numa_cpumask);
-#else
 			kthread_bind(odinfs_agent_tasks[index], target_cpu);
-#endif
+
 			wake_up_process(odinfs_agent_tasks[index]);
 		}
 	}
 
+	cpu_topology_free(socket_cpu);
+
 	return 0;
 
 error:
+	cpu_topology_free(socket_cpu);
 	odinfs_agents_fini();
 
 	return -ENOMEM;

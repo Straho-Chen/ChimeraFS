@@ -16,6 +16,6 @@ modules.order
 
 push_vm.sh
 
-parradm/parradm
+fs/parradm/parradm
 
 .vscode/
