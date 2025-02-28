@@ -90,8 +90,8 @@ struct odinfs_direntry {
  * By changing the ODINFS_DEFAULT_BLOCK_TYPE to 2M or 1G,
  * we should get pretty good coverage in testing.
  */
-// #define ODINFS_DEFAULT_BLOCK_TYPE ODINFS_BLOCK_TYPE_32K
-#define ODINFS_DEFAULT_BLOCK_TYPE ODINFS_BLOCK_TYPE_4K
+#define ODINFS_DEFAULT_BLOCK_TYPE ODINFS_BLOCK_TYPE_32K
+// #define ODINFS_DEFAULT_BLOCK_TYPE ODINFS_BLOCK_TYPE_4K
 
 /*
  * Structure of an inode in ODINFS. Things to keep in mind when modifying it.

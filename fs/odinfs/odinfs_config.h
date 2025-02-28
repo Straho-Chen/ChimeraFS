@@ -67,7 +67,7 @@
 #define ODINFS_DEF_DELE_THREADS_PER_SOCKET 1
 
 /* When set, use nt store to write to memory */
-#define ODINFS_NT_STORE 0
+#define ODINFS_NT_STORE 1
 
 /* 2MB */
 #define ODINFS_RING_SIZE (2 * 1024 * 1024)
@@ -100,6 +100,6 @@
 
 #define ODINFS_DELE_THREAD_BIND_TO_NUMA 1
 
-#define ODINFS_DELE_THREAD_SLEEP 1
+#define ODINFS_DELE_THREAD_SLEEP 0
 
 #endif /* __ODINFS_CONFIG_H_ */
