@@ -26,7 +26,8 @@
  * requests. The 3000 value is set with 32KB strip size where memcpy 32KB
  * takes around 70000 cycles. So (2.2*10^9) / 70000 = 3000
  */
-#define ODINFS_AGENT_REQUEST_CHECK_COUNT 3000
+// #define ODINFS_AGENT_REQUEST_CHECK_COUNT 3000
+#define ODINFS_AGENT_REQUEST_CHECK_COUNT 733333
 
 /*
  * Do cond_schuled()/kthread_should_stop() every 100ms when agents are spinning
@@ -61,7 +62,8 @@
 #define ODINFS_WRITE_DELEGATION_LIMIT 256
 
 /* read delegation limits: 32K */
-#define ODINFS_READ_DELEGATION_LIMIT (32 * 1024)
+// #define ODINFS_READ_DELEGATION_LIMIT (32 * 1024)
+#define ODINFS_READ_DELEGATION_LIMIT (4 * 1024)
 
 /* Number of default delegation threads per socket */
 #define ODINFS_DEF_DELE_THREADS_PER_SOCKET 1
