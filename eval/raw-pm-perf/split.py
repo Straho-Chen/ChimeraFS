@@ -3,7 +3,7 @@ import os
 # 获取当前脚本目录和父目录
 cur_dir = os.path.abspath(os.path.dirname(__file__))
 
-blksize="2m"
+blksize="32k"
 
 def size_in_bytes(blksize_str):
     unit = blksize_str[-1]

@@ -47,8 +47,8 @@ do_fio() {
 
     drop_cache
 
-    ./run-fio.sh $op numa0 $bsize $fsize $job $READ_LOG_DIR $LOG_PREFIX &
-    ./run-fio.sh $op numa1 $bsize $fsize $job $READ_LOG_DIR $LOG_PREFIX &
+    numactl -N 0 ./run-fio.sh $op numa0 $bsize $fsize $job $READ_LOG_DIR $LOG_PREFIX &
+    numactl -N 1 ./run-fio.sh $op numa1 $bsize $fsize $job $READ_LOG_DIR $LOG_PREFIX &
 
     if wait; then
         echo "All fio tests are done"
@@ -87,8 +87,8 @@ for fsize in "${FILE_SIZES[@]}"; do
     for bsize in "${BLK_SIZES[@]}"; do
 
         # init fio test
-        ./run-fio.sh read numa0 $bsize $fsize $max_jobs $READ_LOG_DIR $LOG_PREFIX &
-        ./run-fio.sh read numa1 $bsize $fsize $max_jobs $READ_LOG_DIR $LOG_PREFIX &
+        numactl -N 0 ./run-fio.sh read numa0 $bsize $fsize $max_jobs $READ_LOG_DIR $LOG_PREFIX &
+        numactl -N 1 ./run-fio.sh read numa1 $bsize $fsize $max_jobs $READ_LOG_DIR $LOG_PREFIX &
 
         if wait; then
             echo "All fio preparation are done"

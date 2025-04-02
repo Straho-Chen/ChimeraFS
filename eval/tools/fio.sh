@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 
+PROFILE=0
+
 function where_is_script() {
     local script=$1
     cd "$(dirname "$script")" && pwd
@@ -8,6 +10,7 @@ function where_is_script() {
 ABS_PATH=$(where_is_script "$0")
 
 FIO=$ABS_PATH/../benchmark/bin/fio/bin/fio
+PROFILER_PATH=/home/straho/linux-tools/perf/profiler/profiler
 
 DIR=$1
 BS=$2   # in B
@@ -32,4 +35,14 @@ echo "numjobs=$THREADS" >>$fio_config
 echo "rw=$MODE" >>$fio_config
 echo "stonewall" >>$fio_config
 
-$FIO $fio_config
+$FIO $fio_config &
+fio_pid=$!
+
+if [[ "$PROFILE" == 1 ]]; then
+    $PROFILER_PATH $fio_pid &
+    profiler_pid=$!
+    wait $fio_pid
+    kill -2 $profiler_pid
+else
+    wait $fio_pid
+fi
