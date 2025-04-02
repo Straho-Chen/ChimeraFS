@@ -15,9 +15,10 @@ metadata_checksum=1
 chsm_fs=(nova parfs)
 # fs=(pmfs nova winefs odinfs parfs)
 fs=(parfs)
+# fs=(odinfs)
 
 # Work around, will fix
-sudo rm -rf /dev/pmem_ar*
+sudo rm -rf /dev/*pmem_ar*
 
 for i in ${fs[@]}; do
     cd $i
