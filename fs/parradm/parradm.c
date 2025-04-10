@@ -4,7 +4,8 @@
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
-#include <sys/types.h>
+#include <sys/sysmacros.h>
+#include <unistd.h>
 
 #include "pmem_ar.h"
 
@@ -12,8 +13,7 @@ int main(int argc, char *argv[]) {
   int fd = 0;
   if (argc < 3) {
     fprintf(stderr,
-            "Usage: %s create/delete <target_disk_path> <path_to_disk1> "
-            "<path_to_disk2> ...\n",
+            "Usage: %s create/delete <target_disk_path> <pm_config_file>\n",
             argv[0]);
 
     exit(1);
@@ -25,17 +25,39 @@ int main(int argc, char *argv[]) {
     if (fd == -1)
       perror("open");
 
-    struct pmem_arg_info pmem_arg_info;
+    FILE *config_fp = fopen(argv[3], "r");
+    if (config_fp == NULL)
+      perror("open");
+
+    struct pmem_arg_info pmem_arg_info = {0};
     int i = 0;
+    char line[1024];
 
-    pmem_arg_info.num = argc - 3;
+    while (fgets(line, sizeof(line), config_fp)) {
 
-    for (i = 0; i < pmem_arg_info.num; i++)
-      pmem_arg_info.paths[i] = argv[i + 3];
+      if (line[0] == '\n' || line[0] == '#')
+        continue;
+
+      pmem_arg_info.paths[i] = malloc(256);
+
+      if (sscanf(line, "%255s %d", pmem_arg_info.paths[i],
+                 &pmem_arg_info.numa_node[i]) != 2) {
+        fprintf(stderr, "config file format error: %s", line);
+        fclose(config_fp);
+        close(fd);
+        exit(-1);
+      }
+
+      i++;
+    }
+    pmem_arg_info.num = i;
+
+    fclose(config_fp);
 
     if (ioctl(fd, PMEM_AR_CMD_CREATE, &pmem_arg_info) == -1) {
       perror("ioctl: create");
-      exit(1);
+      close(fd);
+      exit(-1);
     }
   }
   /* allows shorthand de */
