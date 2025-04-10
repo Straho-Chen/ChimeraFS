@@ -10,12 +10,18 @@ set(CXX ${CMAKE_CXX_COMPILER})
 
 file(MAKE_DIRECTORY ${bin_dir})
 
-
 add_custom_target(
     fio-clean
     WORKING_DIRECTORY ${cur_dir}/fio-3.38
     COMMAND make clean
     COMMAND rm -rf ${bin_dir}/fio
+)
+
+add_custom_target(
+    filebench-clean
+    WORKING_DIRECTORY ${cur_dir}/filebench-1.5-alpha3
+    COMMAND make clean
+    COMMAND rm -rf ${bin_dir}/filebench
 )
 
 add_custom_target(
@@ -26,6 +32,15 @@ add_custom_target(
     COMMAND make install
 )
 
+add_custom_target(
+    filebench ALL
+    WORKING_DIRECTORY ${cur_dir}/filebench-1.5-alpha3
+    COMMAND ./configure --prefix=${bin_dir}/filebench
+    COMMAND make -j$(nproc)
+    COMMAND make install
+)
+
 add_custom_target(app-clean DEPENDS 
     fio-clean
+    filebench-clean
 ${_clean_targets})
