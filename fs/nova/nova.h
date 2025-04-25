@@ -139,6 +139,7 @@ extern unsigned int nova_dbgmask;
 #define DEAD_ZONE_BLOCKS (256)
 
 extern int measure_timing;
+extern int measure_meta_timing;
 extern int metadata_csum;
 extern int unsafe_metadata;
 extern int wprotect;

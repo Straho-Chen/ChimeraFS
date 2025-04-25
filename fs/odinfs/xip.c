@@ -244,9 +244,12 @@ ssize_t odinfs_xip_file_read(struct file *filp, char __user *buf, size_t len,
 {
 	ssize_t res;
 	ODINFS_DEFINE_TIMING_VAR(xip_read_time);
+	ODINFS_DEFINE_TIMING_VAR(bd_read_time);
 
 	ODINFS_START_TIMING(xip_read_t, xip_read_time);
+	ODINFS_START_META_TIMING(bd_xip_read_t, bd_read_time);
 	call_xip_file_read();
+	ODINFS_END_META_TIMING(bd_xip_read_t, bd_read_time);
 	ODINFS_END_TIMING(xip_read_t, xip_read_time);
 	return res;
 }
@@ -617,6 +620,7 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
 #endif
 
 	ODINFS_DEFINE_TIMING_VAR(xip_write_time);
+	ODINFS_DEFINE_TIMING_VAR(bd_write_time);
 	ODINFS_DEFINE_TIMING_VAR(xip_write_fast_time);
 
 #if ODINFS_DELEGATION_ENABLE
@@ -624,6 +628,7 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
 #endif
 
 	ODINFS_START_TIMING(xip_write_t, xip_write_time);
+	ODINFS_START_META_TIMING(bd_xip_write_t, bd_write_time);
 
 	memset(odinfs_issued_cnt, 0, sizeof(long) * ODINFS_MAX_SOCKET);
 	memset(odinfs_completed_cnt, 0,
@@ -807,6 +812,7 @@ out:
 out_nolock:
 	sb_end_write(inode->i_sb);
 
+	ODINFS_END_META_TIMING(bd_xip_write_t, bd_write_time);
 	ODINFS_END_TIMING(xip_write_t, xip_write_time);
 	return ret;
 }

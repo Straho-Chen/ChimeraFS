@@ -3,8 +3,6 @@ import os
 # 获取当前脚本目录和父目录
 cur_dir = os.path.abspath(os.path.dirname(__file__))
 
-blksize="32k"
-
 def size_in_bytes(blksize_str):
     unit = blksize_str[-1]
     size = int(blksize_str[:-1])
@@ -18,18 +16,28 @@ def size_in_bytes(blksize_str):
         raise ValueError(f"Invalid unit: {unit}")
 
 # 数据文件路径
-input_file_path = os.path.join(cur_dir, "perf")
-out_name=f"perf-saved-{blksize}"
-output_file_path = os.path.join(cur_dir, f"{out_name}")
+def split_perf(blksize):
+    input_file_path = os.path.join(cur_dir, "perf")
+    out_name=f"perf-saved-{blksize}"
+    output_file_path = os.path.join(cur_dir, f"{out_name}")
 
-with open(input_file_path, 'r') as infile, open(output_file_path, 'w') as outfile:
-    for line in infile:
-        if line.startswith("fs ops filesz blksz numjobs bandwidth(MiB/s)"):
-            outfile.write(line)
-        
-        if line.strip() and not line.startswith("fs ops filesz blksz numjobs bandwidth(MiB/s)"):
-            parts = line.split()
-            if len(parts) > 4 and parts[3] == str(size_in_bytes(blksize)):
+    with open(input_file_path, 'r') as infile, open(output_file_path, 'w') as outfile:
+        for line in infile:
+            if line.startswith("fs ops filesz blksz numjobs bandwidth(MiB/s)"):
                 outfile.write(line)
 
-print(f"Cleaned data saved to {output_file_path}")
+            if line.strip() and not line.startswith("fs ops filesz blksz numjobs bandwidth(MiB/s)"):
+                parts = line.split()
+                if len(parts) > 4 and parts[3] == str(size_in_bytes(blksize)):
+                    outfile.write(line)
+
+    print(f"Cleaned data saved to {output_file_path}")
+
+if __name__ == "__main__":
+    # 运行脚本
+    blksize = ["4k", "8k", "16k", "32k"]
+    for bs in blksize:
+        print(f"Processing block size: {bs}")
+        # 调用函数
+        split_perf(bs)
+    print("Data splitting completed.")

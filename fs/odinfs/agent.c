@@ -89,7 +89,7 @@ static unsigned long user_virt_addr_to_phy_addr(struct mm_struct *mm,
      * do a printk here for the moment.
      */
 
-		odinfs_warn("pmd_large!\n");
+		odinfs_dbg_delegation("pmd_large!\n");
 
 		return (phys_page_addr | offset);
 	}
@@ -177,6 +177,7 @@ static void do_read_request(struct mm_struct *mm, unsigned long kaddr,
 
 	ODINFS_DEFINE_TIMING_VAR(address_translation_time);
 	ODINFS_DEFINE_TIMING_VAR(memcpy_time);
+	ODINFS_DEFINE_TIMING_VAR(bd_memcpy_time);
 
 	ODINFS_START_TIMING(agent_addr_trans_r_t, address_translation_time);
 	tasks_index = create_agent_tasks(mm, uaddr, bytes, tasks);
@@ -189,6 +190,7 @@ static void do_read_request(struct mm_struct *mm, unsigned long kaddr,
 			      uaddr, bytes);
 
 	ODINFS_START_TIMING(agent_memcpy_r_t, memcpy_time);
+	ODINFS_START_META_TIMING(bd_agent_copy_r_t, bd_memcpy_time);
 	for (i = 0; i < tasks_index; i++) {
 		if (zero) {
 			memset((void *)tasks[i].kuaddr, 0, tasks[i].size);
@@ -202,6 +204,7 @@ static void do_read_request(struct mm_struct *mm, unsigned long kaddr,
 			kaddr += tasks[i].size;
 		}
 	}
+	ODINFS_END_META_TIMING(bd_agent_copy_r_t, bd_memcpy_time);
 	ODINFS_END_TIMING(agent_memcpy_r_t, memcpy_time);
 
 out:
@@ -229,6 +232,7 @@ static void do_write_request(struct mm_struct *mm, unsigned long kaddr,
 
 	ODINFS_DEFINE_TIMING_VAR(address_translation_time);
 	ODINFS_DEFINE_TIMING_VAR(memcpy_time);
+	ODINFS_DEFINE_TIMING_VAR(copy_time);
 
 	if (zero) {
 		ODINFS_START_TIMING(agent_memcpy_w_t, memcpy_time);
@@ -252,6 +256,7 @@ static void do_write_request(struct mm_struct *mm, unsigned long kaddr,
 			      uaddr, bytes);
 
 	ODINFS_START_TIMING(agent_memcpy_w_t, memcpy_time);
+	ODINFS_START_META_TIMING(bd_agent_copy_w_t, copy_time);
 	for (i = 0; i < tasks_index; i++) {
 		odinfs_dbg_delegation("uaddr: %lx, size: %ld, kaddr: %lx\n",
 				      tasks[i].kuaddr, tasks[i].size, kaddr);
@@ -271,6 +276,7 @@ static void do_write_request(struct mm_struct *mm, unsigned long kaddr,
 		odinfs_flush_buffer((void *)orig_kaddr, bytes, 0);
 #endif
 
+	ODINFS_END_META_TIMING(bd_agent_copy_w_t, copy_time);
 	ODINFS_END_TIMING(agent_memcpy_w_t, memcpy_time);
 
 out:

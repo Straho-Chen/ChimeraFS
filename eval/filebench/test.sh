@@ -10,18 +10,23 @@ echo 0 >/proc/sys/kernel/randomize_va_space
 
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
-FSCRIPT_PRE_FIX=$ABS_PATH/fbscripts
+FSCRIPT_PRE_FIX=$TOOLS_PATH/fbscripts
 FB_PATH=$ABS_PATH/../benchmark/bin/filebench/bin
+
+cow=0
 
 FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
 DELEGATION_FS=("odinfs" "parfs")
+# DELEGATION_FS=("parfs")
 
 FILE_BENCHES=("fileserver.f" "varmail.f" "webserver.f" "webproxy.f")
 
-THREADS=(1 2 4 8 16 28 32)
+# THREADS=(1 2 4 8 16 28 32)
+THREADS=(1)
 
-DEL_THRDS=(1 2 4 8 12)
+# DEL_THRDS=(1 2 4 8 12)
+DEL_THRDS=(12)
 
 TABLE_NAME="$ABS_PATH/performance-comparison-table"
 
@@ -46,10 +51,10 @@ do_fb() {
 
     # if $fs fall in delegation fs
     if [[ "${DELEGATION_FS[@]}" =~ "$fs" ]]; then
-        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds"
+        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds" "$cow"
         fs=$fs-$del_thrds
     else
-        bash "$TOOLS_PATH"/mount.sh "$fs"
+        bash "$TOOLS_PATH"/mount.sh "$fs" "cow=$cow"
     fi
 
     cp -f "$FSCRIPT_PRE_FIX"/"$fbench" "$ABS_PATH"/DATA/"$fbench"/"$thread"
@@ -101,9 +106,11 @@ do_fb() {
     bash "$TOOLS_PATH"/umount.sh "$fs_raw"
 
     table_add_row "$TABLE_NAME" "$fs $fbench $thread $iops $create $delete $close $read $write $IO"
+    fs=$fs_raw
 }
 
 for fs in "${FS[@]}"; do
+    compile_fs "$fs" "0" "$cow"
     for fbench in "${FILE_BENCHES[@]}"; do
         mkdir -p "$ABS_PATH"/DATA/"$fbench"
         for thrd in "${THREADS[@]}"; do
@@ -119,6 +126,7 @@ done
 # for delegation fs
 
 for fs in "${DELEGATION_FS[@]}"; do
+    compile_fs "$fs" "0" "$cow"
     for del_thrds in "${DEL_THRDS[@]}"; do
         for fbench in "${FILE_BENCHES[@]}"; do
             mkdir -p "$ABS_PATH"/DATA/"$fbench"

@@ -44,6 +44,7 @@
 #include "inode.h"
 
 int measure_timing;
+int measure_meta_timing;
 int metadata_csum;
 int wprotect;
 int data_csum;
@@ -53,6 +54,9 @@ int support_clwb;
 
 module_param(measure_timing, int, 0444);
 MODULE_PARM_DESC(measure_timing, "Timing measurement");
+
+module_param(measure_meta_timing, int, 0444);
+MODULE_PARM_DESC(measure_meta_timing, "Timing measurement for meta breakdown");
 
 module_param(metadata_csum, int, 0444);
 MODULE_PARM_DESC(metadata_csum,
@@ -924,7 +928,7 @@ static void nova_put_super(struct super_block *sb)
 	struct inode_map *inode_map;
 	int i;
 
-	if (measure_timing) {
+	if (measure_timing || measure_meta_timing) {
 		nova_print_timing_stats(sb);
 		nova_clear_stats(sb);
 	}

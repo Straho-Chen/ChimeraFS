@@ -133,18 +133,18 @@ const char *Timingstring[TIMING_NUM] = {
 	"test_perf",
 	"wprotect",
 
-	/* Mmap */
-	"=============== MMap operations ================",
-	"mmap_page_fault",
-	"mmap_pmd_fault",
-	"mmap_pfn_mkwrite",
-	"insert_vma",
-	"remove_vma",
-	"set_vma_readonly",
-	"mmap_cow",
-	"udpate_mapping",
-	"udpate_pfn",
-	"mmap_handler",
+	// /* Mmap */
+	// "=============== MMap operations ================",
+	// "mmap_page_fault",
+	// "mmap_pmd_fault",
+	// "mmap_pfn_mkwrite",
+	// "insert_vma",
+	// "remove_vma",
+	// "set_vma_readonly",
+	// "mmap_cow",
+	// "udpate_mapping",
+	// "udpate_pfn",
+	// "mmap_handler",
 
 	/* Rebuild */
 	"=================== Rebuild ====================",
@@ -159,7 +159,13 @@ const char *Timingstring[TIMING_NUM] = {
 	"delete_snapshot",
 	"append_snapshot_filedata",
 	"append_snapshot_inode",
+
 };
+
+u64 Timingmetastats[META_TIMING_NUM];
+DEFINE_PER_CPU(u64[META_TIMING_NUM], Timingmetastats_percpu);
+u64 Countmetastats[META_TIMING_NUM];
+DEFINE_PER_CPU(u64[META_TIMING_NUM], Countmetastats_percpu);
 
 u64 Timingstats[TIMING_NUM];
 DEFINE_PER_CPU(u64[TIMING_NUM], Timingstats_percpu);
@@ -256,6 +262,20 @@ static void nova_print_IO_stats(struct super_block *sb)
 			0);
 }
 
+static void nova_print_meta_stats(struct super_block *sb)
+{
+	nova_info("=========== NOVA meta stats ===========\n");
+	nova_info("write_total: %llu\n", Timingmetastats[bd_cow_write_t]);
+	nova_info("write_meta: %llu\n", Timingmetastats[bd_cow_write_t] -
+						Timingmetastats[bd_memcpy_w_t]);
+	nova_info("write_data: %llu\n", Timingmetastats[bd_memcpy_w_t]);
+
+	// nova_info("read_total: %llu\n", Timingmetastats[bd_dax_read_t]);
+	// nova_info("read_meta: %llu\n", Timingmetastats[bd_dax_read_t] -
+	// 				       Timingmetastats[bd_memcpy_r_t]);
+	// nova_info("read_data: %llu\n", Timingmetastats[bd_memcpy_r_t]);
+}
+
 void nova_get_timing_stats(void)
 {
 	int i;
@@ -267,6 +287,17 @@ void nova_get_timing_stats(void)
 		for_each_possible_cpu(cpu) {
 			Timingstats[i] += per_cpu(Timingstats_percpu[i], cpu);
 			Countstats[i] += per_cpu(Countstats_percpu[i], cpu);
+		}
+	}
+
+	for (i = 0; i < META_TIMING_NUM; i++) {
+		Timingmetastats[i] = 0;
+		Countmetastats[i] = 0;
+		for_each_possible_cpu(cpu) {
+			Timingmetastats[i] +=
+				per_cpu(Timingmetastats_percpu[i], cpu);
+			Countmetastats[i] +=
+				per_cpu(Countmetastats_percpu[i], cpu);
 		}
 	}
 }
@@ -314,6 +345,7 @@ void nova_print_timing_stats(struct super_block *sb)
 	nova_info("\n");
 	nova_print_alloc_stats(sb);
 	nova_print_IO_stats(sb);
+	nova_print_meta_stats(sb);
 }
 
 static void nova_clear_timing_stats(void)
@@ -327,6 +359,15 @@ static void nova_clear_timing_stats(void)
 		for_each_possible_cpu(cpu) {
 			per_cpu(Timingstats_percpu[i], cpu) = 0;
 			per_cpu(Countstats_percpu[i], cpu) = 0;
+		}
+	}
+
+	for (i = 0; i < META_TIMING_NUM; i++) {
+		Countmetastats[i] = 0;
+		Timingmetastats[i] = 0;
+		for_each_possible_cpu(cpu) {
+			per_cpu(Timingmetastats_percpu[i], cpu) = 0;
+			per_cpu(Countmetastats_percpu[i], cpu) = 0;
 		}
 	}
 }

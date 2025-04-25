@@ -96,6 +96,7 @@ int nova_handle_head_tail_blocks(struct super_block *sb, struct inode *inode,
 	unsigned long start_blk, end_blk, num_blocks;
 	struct nova_file_write_entry *entry;
 	INIT_TIMING(partial_time);
+	INIT_TIMING(bd_memcpy_time);
 	int ret = 0;
 
 	NOVA_START_TIMING(partial_block_t, partial_time);
@@ -114,8 +115,10 @@ int nova_handle_head_tail_blocks(struct super_block *sb, struct inode *inode,
 			 offset, start_blk, kmem);
 	if (offset != 0) {
 		entry = nova_get_write_entry(sb, sih, start_blk);
+		NOVA_START_META_TIMING(bd_memcpy_w_t, bd_memcpy_time);
 		ret = nova_handle_partial_block(sb, sih, entry, start_blk, 0,
 						offset, kmem);
+		NOVA_END_META_TIMING(bd_memcpy_w_t, bd_memcpy_time);
 		if (ret < 0)
 			return ret;
 	}
@@ -128,10 +131,12 @@ int nova_handle_head_tail_blocks(struct super_block *sb, struct inode *inode,
 	if (eblk_offset != 0) {
 		entry = nova_get_write_entry(sb, sih, end_blk);
 
+		NOVA_START_META_TIMING(bd_memcpy_w_t, bd_memcpy_time);
 		ret = nova_handle_partial_block(sb, sih, entry, end_blk,
 						eblk_offset,
 						sb->s_blocksize - eblk_offset,
 						kmem);
+		NOVA_END_META_TIMING(bd_memcpy_w_t, bd_memcpy_time);
 		if (ret < 0)
 			return ret;
 	}
@@ -1082,11 +1087,11 @@ static vm_fault_t nova_dax_huge_fault(struct vm_fault *vmf, unsigned int order)
 	vm_fault_t ret;
 	int error = 0;
 	pfn_t pfn;
-	INIT_TIMING(fault_time);
+	// INIT_TIMING(fault_time);
 	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
 	struct inode *inode = mapping->host;
 
-	NOVA_START_TIMING(pmd_fault_t, fault_time);
+	// NOVA_START_TIMING(pmd_fault_t, fault_time);
 
 	nova_dbgv("%s: inode %lu, pgoff %lu\n", __func__, inode->i_ino,
 		  vmf->pgoff);
@@ -1096,7 +1101,7 @@ static vm_fault_t nova_dax_huge_fault(struct vm_fault *vmf, unsigned int order)
 
 	ret = dax_iomap_fault(vmf, order, &pfn, &error, &nova_iomap_ops_lock);
 
-	NOVA_END_TIMING(pmd_fault_t, fault_time);
+	// NOVA_END_TIMING(pmd_fault_t, fault_time);
 	return ret;
 }
 
@@ -1193,16 +1198,16 @@ int nova_insert_write_vma(struct vm_area_struct *vma)
 	int compVal;
 	int insert = 0;
 	int ret;
-	INIT_TIMING(insert_vma_time);
+	// INIT_TIMING(insert_vma_time);
 
 	if ((vma->vm_flags & flags) != flags)
 		return 0;
 
-	NOVA_START_TIMING(insert_vma_t, insert_vma_time);
+	// NOVA_START_TIMING(insert_vma_t, insert_vma_time);
 
 	item = nova_alloc_vma_item(sb);
 	if (!item) {
-		NOVA_END_TIMING(insert_vma_t, insert_vma_time);
+		// NOVA_END_TIMING(insert_vma_t, insert_vma_time);
 		return -ENOMEM;
 	}
 
@@ -1255,7 +1260,7 @@ out:
 		mutex_unlock(&sbi->vma_mutex);
 	}
 
-	NOVA_END_TIMING(insert_vma_t, insert_vma_time);
+	// NOVA_END_TIMING(insert_vma_t, insert_vma_time);
 	return ret;
 }
 
@@ -1272,9 +1277,9 @@ static int nova_remove_write_vma(struct vm_area_struct *vma)
 	int compVal;
 	int found = 0;
 	int remove = 0;
-	INIT_TIMING(remove_vma_time);
+	// INIT_TIMING(remove_vma_time);
 
-	NOVA_START_TIMING(remove_vma_t, remove_vma_time);
+	// NOVA_START_TIMING(remove_vma_t, remove_vma_time);
 	inode_lock(inode);
 
 	temp = sih->vma_tree.rb_node;
@@ -1316,7 +1321,7 @@ static int nova_remove_write_vma(struct vm_area_struct *vma)
 		mutex_unlock(&sbi->vma_mutex);
 	}
 
-	NOVA_END_TIMING(remove_vma_t, remove_vma_time);
+	// NOVA_END_TIMING(remove_vma_t, remove_vma_time);
 	return 0;
 }
 

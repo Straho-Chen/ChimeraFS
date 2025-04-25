@@ -137,18 +137,18 @@ enum timing_category {
 	perf_t,
 	wprotect_t,
 
-	/* Mmap */
-	mmap_title_t,
-	mmap_fault_t,
-	pmd_fault_t,
-	pfn_mkwrite_t,
-	insert_vma_t,
-	remove_vma_t,
-	set_vma_read_t,
-	mmap_cow_t,
-	update_mapping_t,
-	update_pfn_t,
-	mmap_handler_t,
+	// /* Mmap */
+	// mmap_title_t,
+	// mmap_fault_t,
+	// pmd_fault_t,
+	// pfn_mkwrite_t,
+	// insert_vma_t,
+	// remove_vma_t,
+	// set_vma_read_t,
+	// mmap_cow_t,
+	// update_mapping_t,
+	// update_pfn_t,
+	// mmap_handler_t,
 
 	/* Rebuild */
 	rebuild_title_t,
@@ -166,6 +166,16 @@ enum timing_category {
 
 	/* Sentinel */
 	TIMING_NUM,
+};
+
+enum timing_meta_category {
+	bd_cow_write_t,
+	bd_memcpy_w_t,
+
+	// bd_dax_read_t,
+	// bd_memcpy_r_t,
+
+	META_TIMING_NUM,
 };
 
 enum stats_category {
@@ -194,6 +204,11 @@ enum stats_category {
 	STATS_NUM,
 };
 
+extern u64 Timingmetastats[META_TIMING_NUM];
+DECLARE_PER_CPU(u64[META_TIMING_NUM], Timingmetastats_percpu);
+extern u64 Countmetastats[META_TIMING_NUM];
+DECLARE_PER_CPU(u64[META_TIMING_NUM], Countmetastats_percpu);
+
 extern const char *Timingstring[TIMING_NUM];
 extern u64 Timingstats[TIMING_NUM];
 DECLARE_PER_CPU(u64[TIMING_NUM], Timingstats_percpu);
@@ -206,23 +221,57 @@ typedef struct timespec64 timing_t;
 
 #define INIT_TIMING(X) timing_t X = { 0 }
 
+static inline void mem_fence(void)
+{
+	asm volatile("mfence\n" : :);
+}
+
 #define NOVA_START_TIMING(name, start)          \
 	{                                       \
-		if (measure_timing)             \
+		if (measure_timing) {           \
+			mem_fence();            \
 			ktime_get_ts64(&start); \
+			mem_fence();            \
+		}                               \
 	}
 
 #define NOVA_END_TIMING(name, start)                                           \
 	{                                                                      \
 		if (measure_timing) {                                          \
 			INIT_TIMING(end);                                      \
+			mem_fence();                                           \
 			ktime_get_ts64(&end);                                  \
+			mem_fence();                                           \
 			__this_cpu_add(Timingstats_percpu[name],               \
 				       (end.tv_sec - start.tv_sec) *           \
 						       1000000000 +            \
 					       (end.tv_nsec - start.tv_nsec)); \
+			__this_cpu_add(Countstats_percpu[name], 1);            \
 		}                                                              \
-		__this_cpu_add(Countstats_percpu[name], 1);                    \
+	}
+
+#define NOVA_START_META_TIMING(name, start)     \
+	{                                       \
+		if (measure_meta_timing) {      \
+			mem_fence();            \
+			ktime_get_ts64(&start); \
+			mem_fence();            \
+		}                               \
+	}
+
+#define NOVA_END_META_TIMING(name, start)                                      \
+	{                                                                      \
+		if (measure_meta_timing) {                                     \
+			INIT_TIMING(end);                                      \
+			mem_fence();                                           \
+			ktime_get_ts64(&end);                                  \
+			mem_fence();                                           \
+			__this_cpu_add(Timingmetastats_percpu[name],           \
+				       (end.tv_sec - start.tv_sec) *           \
+						       1000000000 +            \
+					       (end.tv_nsec - start.tv_nsec)); \
+			__this_cpu_add(Countmetastats_percpu[name], 1);        \
+		}                                                              \
 	}
 
 #define NOVA_STATS_ADD(name, value)                          \

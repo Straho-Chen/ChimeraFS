@@ -1,13 +1,5 @@
 #!/usr/bin/bash
 
-del_thrds=$1
-cow=$2
-
-if [ -z "$del_thrds" ]; then
-    echo "Usage: $0 <dele_thrds>"
-    exit 1
-fi
-
 mount_script_dir=$(dirname "$(readlink -f "$BASH_SOURCE[0]")")
 
 pmem_num=$(ndctl list -R | grep "dev" | wc -l)
@@ -29,9 +21,5 @@ cd $pmem_probe_dir && python3 gen_config.py 2
 
 sudo parradm create /dev/parfs_pmem_ar0 $pmem_probe_file
 
-if [[ "$cow" == "1" ]]; then
-    sudo mount -t parfs -o init,dele_thrds=$del_thrds,data_cow /dev/parfs_pmem_ar0 /mnt/pmem0/
-else
-    sudo mount -t parfs -o init,dele_thrds=$del_thrds /dev/parfs_pmem_ar0 /mnt/pmem0/
-fi
+sudo mount -t parfs -o init,dele_thrds=12,data_cow /dev/parfs_pmem_ar0 /mnt/pmem0/
 sudo chown $USER /mnt/pmem0/

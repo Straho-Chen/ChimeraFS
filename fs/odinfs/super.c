@@ -46,11 +46,15 @@
 #include "ring.h"
 
 int measure_timing = 0;
+int measure_meta_timing = 0;
 int support_clwb_odinfs = 0;
 int support_pcommit_odinfs = 0;
 
 module_param(measure_timing, int, S_IRUGO);
 MODULE_PARM_DESC(measure_timing, "Timing measurement");
+
+module_param(measure_meta_timing, int, S_IRUGO);
+MODULE_PARM_DESC(measure_meta_timing, "Timing measurement for meta breakdown");
 
 static struct super_operations odinfs_sops;
 static const struct export_operations odinfs_export_ops;
@@ -1035,7 +1039,7 @@ static void odinfs_put_super(struct super_block *sb)
 		first_odinfs_super = NULL;
 #endif
 
-	if (measure_timing) {
+	if (measure_timing || measure_meta_timing) {
 		odinfs_print_timing_stats();
 		odinfs_clear_stats();
 	}

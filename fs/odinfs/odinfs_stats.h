@@ -79,6 +79,26 @@ enum timing_category {
 	TIMING_NUM,
 };
 
+enum timing_category_meta {
+	bd_xip_write_t,
+	bd_agent_copy_w_t,
+
+	bd_xip_read_t,
+	bd_agent_copy_r_t,
+
+	META_TIMING_NUM,
+};
+
+extern unsigned long long Timingstats_meta_odinfs[META_TIMING_NUM];
+DECLARE_PER_CPU(unsigned long long[META_TIMING_NUM],
+		Timingstats_meta_percpu_odinfs);
+
+extern unsigned long long Countstats_meta_odinfs[META_TIMING_NUM];
+DECLARE_PER_CPU(unsigned long long[META_TIMING_NUM],
+		Countstats_meta_percpu_odinfs);
+
+extern int measure_meta_timing;
+
 extern const char *Timingstring_odinfs[TIMING_NUM];
 
 extern unsigned long Timingstats_odinfs[TIMING_NUM];
@@ -89,7 +109,7 @@ DECLARE_PER_CPU(unsigned long[TIMING_NUM], Countstats_percpu_odinfs);
 
 extern int measure_timing;
 
-typedef unsigned long timing_t;
+// typedef unsigned long timing_t;
 
 #if ODINFS_MEASURE_TIME
 
@@ -98,28 +118,63 @@ typedef unsigned long timing_t;
 		atomic64_inc(&fsync_pages); \
 	}
 
-#define ODINFS_DEFINE_TIMING_VAR(name) timing_t name
+// #define ODINFS_DEFINE_TIMING_VAR(name) timing_t name
 
-#define ODINFS_START_TIMING(name, start)               \
-	do {                                           \
-		if (measure_timing) {                  \
-			barrier();                     \
-			start = odinfs_timing_start(); \
-			barrier();                     \
-		}                                      \
+typedef struct timespec64 timing_t;
+
+#define ODINFS_DEFINE_TIMING_VAR(X) timing_t X = { 0 }
+
+static inline void mem_fence(void)
+{
+	asm volatile("mfence\n" : :);
+}
+
+#define ODINFS_START_TIMING(name, start)        \
+	do {                                    \
+		if (measure_timing) {           \
+			mem_fence();            \
+			ktime_get_ts64(&start); \
+			mem_fence();            \
+		}                               \
 	} while (0)
 
-#define ODINFS_END_TIMING(name, start)                                  \
-	do {                                                            \
-		if (measure_timing) {                                   \
-			timing_t end;                                   \
-			barrier();                                      \
-			end = odinfs_timing_end();                      \
-			barrier();                                      \
-			__this_cpu_add(Timingstats_percpu_odinfs[name], \
-				       (end - start));                  \
-		}                                                       \
-		__this_cpu_add(Countstats_percpu_odinfs[name], 1);      \
+#define ODINFS_END_TIMING(name, start)                                         \
+	do {                                                                   \
+		if (measure_timing) {                                          \
+			ODINFS_DEFINE_TIMING_VAR(end);                         \
+			mem_fence();                                           \
+			ktime_get_ts64(&end);                                  \
+			mem_fence();                                           \
+			__this_cpu_add(Timingstats_percpu_odinfs[name],        \
+				       (end.tv_sec - start.tv_sec) *           \
+						       1000000000 +            \
+					       (end.tv_nsec - start.tv_nsec)); \
+		}                                                              \
+		__this_cpu_add(Countstats_percpu_odinfs[name], 1);             \
+	} while (0)
+
+#define ODINFS_START_META_TIMING(name, start)   \
+	do {                                    \
+		if (measure_meta_timing) {           \
+			mem_fence();            \
+			ktime_get_ts64(&start); \
+			mem_fence();            \
+		}                               \
+	} while (0)
+
+#define ODINFS_END_META_TIMING(name, start)                                    \
+	do {                                                                   \
+		if (measure_meta_timing) {                                          \
+			ODINFS_DEFINE_TIMING_VAR(end);                         \
+			mem_fence();                                           \
+			ktime_get_ts64(&end);                                  \
+			mem_fence();                                           \
+			__this_cpu_add(Timingstats_meta_percpu_odinfs[name],   \
+				       (end.tv_sec - start.tv_sec) *           \
+						       1000000000 +            \
+					       (end.tv_nsec - start.tv_nsec)); \
+		}                                                              \
+		__this_cpu_add(Countstats_meta_percpu_odinfs[name], 1);        \
 	} while (0)
 #else
 

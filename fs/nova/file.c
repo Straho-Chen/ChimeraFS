@@ -473,6 +473,7 @@ static ssize_t do_dax_mapping_read(struct file *filp, char __user *buf,
 	loff_t isize, pos;
 	size_t copied = 0, error = 0;
 	INIT_TIMING(memcpy_time);
+	// INIT_TIMING(bd_copy_time);
 
 	pos = *ppos;
 	index = pos >> PAGE_SHIFT;
@@ -570,6 +571,7 @@ memcpy:
 		}
 skip_verify:
 		NOVA_START_TIMING(memcpy_r_nvmm_t, memcpy_time);
+		// NOVA_START_META_TIMING(bd_memcpy_r_t, bd_copy_time);
 
 		if (!zero)
 			left = __copy_to_user(buf + copied, dax_mem + offset,
@@ -577,6 +579,7 @@ skip_verify:
 		else
 			left = __clear_user(buf + copied, nr);
 
+		// NOVA_END_META_TIMING(bd_memcpy_r_t, bd_copy_time);
 		NOVA_END_TIMING(memcpy_r_nvmm_t, memcpy_time);
 
 		if (left) {
@@ -614,11 +617,14 @@ static ssize_t nova_dax_file_read(struct file *filp, char __user *buf,
 	struct inode *inode = filp->f_mapping->host;
 	ssize_t res;
 	INIT_TIMING(dax_read_time);
+	// INIT_TIMING(bd_read_time);
 
 	NOVA_START_TIMING(dax_read_t, dax_read_time);
+	// NOVA_START_META_TIMING(bd_dax_read_t, bd_read_time);
 	inode_lock_shared(inode);
 	res = do_dax_mapping_read(filp, buf, len, ppos);
 	inode_unlock_shared(inode);
+	// NOVA_END_META_TIMING(bd_dax_read_t, bd_read_time);
 	NOVA_END_TIMING(dax_read_t, dax_read_time);
 	return res;
 }
@@ -650,7 +656,9 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 	size_t bytes;
 	long status = 0;
 	INIT_TIMING(cow_write_time);
+	INIT_TIMING(bd_write_time);
 	INIT_TIMING(memcpy_time);
+	INIT_TIMING(bd_copy_time);
 	unsigned long step = 0;
 	ssize_t ret;
 	u64 begin_tail = 0;
@@ -663,6 +671,7 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 		return 0;
 
 	NOVA_START_TIMING(do_cow_write_t, cow_write_time);
+	NOVA_START_META_TIMING(bd_cow_write_t, bd_write_time);
 
 	if (!access_ok(buf, len)) {
 		ret = -EFAULT;
@@ -754,10 +763,12 @@ static ssize_t do_nova_cow_file_write(struct file *filp, const char __user *buf,
 		/* Now copy from user buf */
 		//		nova_dbg("Write: %p\n", kmem);
 		NOVA_START_TIMING(memcpy_w_nvmm_t, memcpy_time);
+		NOVA_START_META_TIMING(bd_memcpy_w_t, bd_copy_time);
 		nova_memunlock_range(sb, kmem + offset, bytes, &irq_flags);
 		copied = bytes -
 			 memcpy_to_pmem_nocache(kmem + offset, buf, bytes);
 		nova_memlock_range(sb, kmem + offset, bytes, &irq_flags);
+		NOVA_END_META_TIMING(bd_memcpy_w_t, bd_copy_time);
 		NOVA_END_TIMING(memcpy_w_nvmm_t, memcpy_time);
 
 		if (data_csum > 0 || data_parity > 0) {
@@ -837,6 +848,7 @@ out:
 					      begin_tail, update.tail);
 
 	NOVA_END_TIMING(do_cow_write_t, cow_write_time);
+	NOVA_END_META_TIMING(bd_cow_write_t, bd_write_time);
 	NOVA_STATS_ADD(cow_write_bytes, written);
 
 	if (try_inplace)

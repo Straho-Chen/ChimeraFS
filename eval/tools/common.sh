@@ -47,3 +47,41 @@ function drop_cache() {
     sync
     echo 3 | sudo tee /proc/sys/vm/drop_caches
 }
+
+function ufs_lib_path() {
+    local fs=$1
+    ABS_PATH=$(where_is_script "$0")
+    FS_PATH=$ABS_PATH/../../fs
+    if [[ "$fs" == "madfs" ]]; then
+        echo "$FS_PATH/Madfs/build-release/libmadfs.so"
+    else
+        echo ""
+    fi
+}
+
+function dmesg_attr_time() {
+    local output="$1"
+    local stat="$2"
+
+    cat "$output" | grep -w "$stat" | awk -F: '{print $3}' | sed 's/ //g'
+}
+
+function compile_fs() {
+    local fs=$1
+    local bd=$2
+    local cow=$3
+
+    ABS_PATH=$(where_is_script "$0")
+    FS_DIR=$ABS_PATH/../../fs
+    dir_change() (
+        cd "$FS_DIR" || exit
+        if [[ "$fs" == "madfs" ]]; then
+            cd "$FS_DIR/Madfs" || exit
+            make BUILD_TARGETS="madfs"
+            cd "$FS_DIR" || exit
+        else
+            bash compile.sh "$fs" "$bd" "$cow"
+        fi
+    )
+    dir_change
+}

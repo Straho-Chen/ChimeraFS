@@ -1,0 +1,114 @@
+#!/usr/bin/bash
+
+set -ex
+
+source "../tools/common.sh"
+
+sudo -v
+
+ABS_PATH=$(where_is_script "$0")
+TOOLS_PATH=$ABS_PATH/../tools
+
+# FS=("nova" "odinfs" "parfs" "nvodin")
+FS=("nova" "parfs" "nvodin")
+
+DELEGATION_FS=("odinfs" "parfs" "nvodin")
+
+del_thrds=(12)
+
+WORKLOADS=("write" "randwrite")
+
+TOTAL_FILE_SIZE=$((32 * 1024))
+# BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
+BLK_SIZES=($((4 * 1024)))
+NUM_JOBS=(1)
+
+TABLE_NAME_NOVA="$ABS_PATH/performance-comparison-table-nova"
+table_create "$TABLE_NAME_NOVA" "workloads total_time(ns) meta(ns) data(ns)"
+
+TABLE_NAME_ODINFS="$ABS_PATH/performance-comparison-table-odinfs"
+table_create "$TABLE_NAME_ODINFS" "workloads total_time(ns) meta(ns) data(ns)"
+
+TABLE_NAME_PARFS="$ABS_PATH/performance-comparison-table-parfs"
+table_create "$TABLE_NAME_PARFS" "workloads total_time(ns) meta(ns) data(ns)"
+
+TABLE_NAME_NVODIN="$ABS_PATH/performance-comparison-table-nvodin"
+table_create "$TABLE_NAME_NVODIN" "workloads total_time(ns) meta(ns) data(ns)"
+
+fpath="/mnt/pmem0/"
+
+do_fio() {
+    local fs=$1
+    local op=$2
+    local fsize=$3
+    local bsz=$4
+    local job=$5
+    local del_thrds=$6
+
+    if [[ "$op" == "write" || "$op" == "randwrite" ]]; then
+        grep_sign="WRITE:"
+    else
+        grep_sign="READ:"
+    fi
+
+    echo "FIO: $fs $op $fsize $bsz $job" >/dev/kmsg
+
+    fs_raw=$fs
+
+    # if $fs fall in delegation fs
+    if [[ "${DELEGATION_FS[@]}" =~ "$fs" ]]; then
+        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds" "1"
+        fs=$fs-$del_thrds
+    else
+        bash "$TOOLS_PATH"/mount.sh "$fs" "cow=1"
+    fi
+
+    BW=$(bash "$TOOLS_PATH"/fio.sh "$fpath" "$bsz" "$fsize" "$job" "$op" | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
+
+    bash "$TOOLS_PATH"/umount.sh "$fs_raw"
+
+    fs=$fs_raw
+}
+
+mkdir -p "$ABS_PATH"/M_DATA/fio
+
+for fs in "${FS[@]}"; do
+    compile_fs "$fs" "1" "1"
+    for bsz in "${BLK_SIZES[@]}"; do
+        for job in "${NUM_JOBS[@]}"; do
+            for workload in "${WORKLOADS[@]}"; do
+                fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
+
+                dmesg -C
+
+                if [[ "${fs}" == "nova" ]]; then
+                    do_fio "$fs" "$workload" "$fsize" "$bsz" "$job"
+                else
+                    do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
+                fi
+
+                mkdir -p "$ABS_PATH"/M_DATA/fio/${workload}
+                dmesg -c >"$ABS_PATH"/M_DATA/fio/${workload}/${fs}
+
+                sleep 1
+
+                total_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/fio/${workload}/${fs} "write_total")
+                meta_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/fio/${workload}/${fs} "write_meta")
+                data_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/fio/${workload}/${fs} "write_data")
+
+                if [[ "${fs}" == "nova" ]]; then
+                    table_add_row "$TABLE_NAME_NOVA" "$workload $total_time $meta_time $data_time"
+                elif [[ "${fs}" == "odinfs" ]]; then
+                    table_add_row "$TABLE_NAME_ODINFS" "$workload $total_time $meta_time $data_time"
+                elif [[ "${fs}" == "parfs" ]]; then
+                    table_add_row "$TABLE_NAME_PARFS" "$workload $total_time $meta_time $data_time"
+                elif [[ "${fs}" == "nvodin" ]]; then
+                    table_add_row "$TABLE_NAME_NVODIN" "$workload $total_time $meta_time $data_time"
+                else
+                    echo "fs: ${fs}"
+                fi
+
+            done
+        done
+    done
+done

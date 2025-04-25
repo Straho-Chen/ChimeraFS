@@ -66,9 +66,9 @@ static int nova_update_dax_mapping(struct super_block *sb,
 	unsigned long value, new_value;
 	int i;
 	int ret = 0;
-	INIT_TIMING(update_time);
+	// INIT_TIMING(update_time);
 
-	NOVA_START_TIMING(update_mapping_t, update_time);
+	// NOVA_START_TIMING(update_mapping_t, update_time);
 
 	start_blocknr = nova_get_blocknr(sb, entry->block, sih->i_blk_type);
 	xa_lock_irq(&mapping->i_pages);
@@ -92,7 +92,7 @@ static int nova_update_dax_mapping(struct super_block *sb,
 
 	xa_unlock_irq(&mapping->i_pages);
 
-	NOVA_END_TIMING(update_mapping_t, update_time);
+	// NOVA_END_TIMING(update_mapping_t, update_time);
 	return ret;
 }
 
@@ -109,9 +109,9 @@ static int nova_update_entry_pfn(struct super_block *sb,
 	unsigned long pfn;
 	pgprot_t new_prot;
 	int ret;
-	INIT_TIMING(update_time);
+	// INIT_TIMING(update_time);
 
-	NOVA_START_TIMING(update_pfn_t, update_time);
+	// NOVA_START_TIMING(update_pfn_t, update_time);
 
 	addr = vma->vm_start + ((start_pgoff - vma->vm_pgoff) << PAGE_SHIFT);
 	pfn = nova_get_pfn(sb, entry->block) + start_pgoff - entry->pgoff;
@@ -124,7 +124,7 @@ static int nova_update_entry_pfn(struct super_block *sb,
 
 	ret = remap_pfn_range(vma, addr, pfn, size, new_prot);
 
-	NOVA_END_TIMING(update_pfn_t, update_time);
+	// NOVA_END_TIMING(update_pfn_t, update_time);
 	return ret;
 }
 
@@ -168,9 +168,9 @@ static int nova_dax_cow_mmap_handler(struct super_block *sb,
 	u64 curr_p = begin_tail;
 	size_t entry_size = sizeof(struct nova_file_write_entry);
 	int ret = 0;
-	INIT_TIMING(update_time);
+	// INIT_TIMING(update_time);
 
-	NOVA_START_TIMING(mmap_handler_t, update_time);
+	// NOVA_START_TIMING(mmap_handler_t, update_time);
 	entryc = (metadata_csum == 0) ? entry : &entry_copy;
 	while (curr_p && curr_p != sih->log_tail) {
 		if (is_last_entry(curr_p, entry_size))
@@ -209,7 +209,7 @@ static int nova_dax_cow_mmap_handler(struct super_block *sb,
 		curr_p += entry_size;
 	}
 
-	NOVA_END_TIMING(mmap_handler_t, update_time);
+	// NOVA_END_TIMING(mmap_handler_t, update_time);
 	return ret;
 }
 
@@ -271,17 +271,17 @@ int nova_mmap_to_new_blocks(struct vm_area_struct *vma, unsigned long address)
 	u64 epoch_id;
 	u64 entry_size;
 	u32 time;
-	INIT_TIMING(mmap_cow_time);
+	// INIT_TIMING(mmap_cow_time);
 	int ret = 0;
 	unsigned long irq_flags = 0;
 
-	NOVA_START_TIMING(mmap_cow_t, mmap_cow_time);
+	// NOVA_START_TIMING(mmap_cow_t, mmap_cow_time);
 
 	nova_get_dax_cow_range(sb, vma, address, &start_blk, &num_blocks);
 
 	end_blk = start_blk + num_blocks;
 	if (start_blk >= end_blk) {
-		NOVA_END_TIMING(mmap_cow_t, mmap_cow_time);
+		// NOVA_END_TIMING(mmap_cow_t, mmap_cow_time);
 		return 0;
 	}
 
@@ -434,7 +434,7 @@ out:
 					      begin_tail, update.tail);
 
 	inode_unlock(inode);
-	NOVA_END_TIMING(mmap_cow_t, mmap_cow_time);
+	// NOVA_END_TIMING(mmap_cow_t, mmap_cow_time);
 	return ret;
 }
 
@@ -501,9 +501,9 @@ static int nova_set_sih_vmas_readonly(struct nova_inode_info_header *sih)
 {
 	struct vma_item *item;
 	struct rb_node *temp;
-	INIT_TIMING(set_read_time);
+	// INIT_TIMING(set_read_time);
 
-	NOVA_START_TIMING(set_vma_read_t, set_read_time);
+	// NOVA_START_TIMING(set_vma_read_t, set_read_time);
 
 	temp = rb_first(&sih->vma_tree);
 	while (temp) {
@@ -512,7 +512,7 @@ static int nova_set_sih_vmas_readonly(struct nova_inode_info_header *sih)
 		nova_set_vma_read(item->vma);
 	}
 
-	NOVA_END_TIMING(set_vma_read_t, set_read_time);
+	// NOVA_END_TIMING(set_vma_read_t, set_read_time);
 	return 0;
 }
 
