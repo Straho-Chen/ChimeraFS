@@ -5307,7 +5307,8 @@ class Benchmark {
           }
         }
       }
-      DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(id);
+      // PYQ: per-thread DBWithColumnFamilies
+      DBWithColumnFamilies* db_with_cfh = SelectDBWithCfh(thread->tid);
 
       batch.Clear();
       int64_t batch_bytes = 0;

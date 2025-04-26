@@ -289,7 +289,9 @@ class WritableFileWriter {
 
   FSWritableFile* writable_file() const { return writable_file_.get(); }
 
-  bool use_direct_io() { return writable_file_->use_direct_io(); }
+  // PYQ: use direct I/O by default
+  // writable_file_->use_direct_io();
+  bool use_direct_io() { return true; }
 
   bool BufferIsEmpty() const { return buf_.CurrentSize() == 0; }
 
