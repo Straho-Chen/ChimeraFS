@@ -512,7 +512,7 @@ Status DBImpl::WriteLevel0Table(MemTable* mem, VersionEdit* edit,
     s = BuildTable(dbname_, env_, options_, table_cache_, iter, &meta);
     mutex_.Lock();
   }
-
+  
   Log(options_.info_log, "Level-0 table #%llu: %lld bytes %s",
       (unsigned long long) meta.number,
       (unsigned long long) meta.file_size,
@@ -656,20 +656,25 @@ void DBImpl::RecordBackgroundError(const Status& s) {
 
 void DBImpl::MaybeScheduleCompaction() {
   mutex_.AssertHeld();
-  if (background_compaction_scheduled_) {
-    // Already scheduled
-  } else if (shutting_down_.Acquire_Load()) {
-    // DB is being deleted; no more background compactions
-  } else if (!bg_error_.ok()) {
-    // Already got an error; no more changes
-  } else if (imm_ == nullptr &&
-             manual_compaction_ == nullptr &&
-             !versions_->NeedsCompaction()) {
-    // No work to be done
-  } else {
-    background_compaction_scheduled_ = true;
-    env_->Schedule(&DBImpl::BGWork, this);
-  }
+  // if (background_compaction_scheduled_) {
+  //   // Already scheduled
+  // } else if (shutting_down_.Acquire_Load()) {
+  //   // DB is being deleted; no more background compactions
+  // } else if (!bg_error_.ok()) {
+  //   // Already got an error; no more changes
+  // } else if (imm_ == nullptr &&
+  //            manual_compaction_ == nullptr &&
+  //            !versions_->NeedsCompaction()) {
+  //   // No work to be done
+  // } else {
+  //   background_compaction_scheduled_ = true;
+  //   env_->Schedule(&DBImpl::BGWork, this);
+  // }
+
+  // Just do this in the foreground for now
+  // Never schedule background compaction
+  background_compaction_scheduled_ = true;
+  BGWork(this);
 }
 
 void DBImpl::BGWork(void* db) {
@@ -677,7 +682,7 @@ void DBImpl::BGWork(void* db) {
 }
 
 void DBImpl::BackgroundCall() {
-  MutexLock l(&mutex_);
+  // MutexLock l(&mutex_);
   assert(background_compaction_scheduled_);
   if (shutting_down_.Acquire_Load()) {
     // No more background work when shutting down.
@@ -691,7 +696,7 @@ void DBImpl::BackgroundCall() {
 
   // Previous compaction may have produced too many files in a level,
   // so reschedule another compaction if needed.
-  MaybeScheduleCompaction();
+  // MaybeScheduleCompaction();
   background_work_finished_signal_.SignalAll();
 }
 

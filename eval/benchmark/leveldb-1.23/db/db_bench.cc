@@ -137,6 +137,10 @@ static bool FLAGS_use_existing_db = false;
 // If true, reuse existing log/MANIFEST files when re-opening a database.
 static bool FLAGS_reuse_logs = false;
 
+static int FLAGS_num_multi_db = 0;
+
+static int FLAGS_max_replay_entries = -1;
+
 // Use the db with the following name.
 static const char* FLAGS_db = nullptr;
 
@@ -346,6 +350,7 @@ class Benchmark {
   Cache* cache_;
   const FilterPolicy* filter_policy_;
   DB* db_;
+  std::vector<DB*> multi_dbs_;
   int num_;
   int value_size_;
   int entries_per_batch_;
@@ -448,11 +453,19 @@ class Benchmark {
     }
     if (!FLAGS_use_existing_db) {
       DestroyDB(FLAGS_db, Options());
+      if (FLAGS_num_multi_db > 1) {
+        g_env->CreateDir(FLAGS_db);
+      }
     }
   }
 
   ~Benchmark() {
-    delete db_;
+    if (db_ != nullptr) {
+      delete db_;
+    }
+    for (auto db : multi_dbs_) {
+      delete db;
+    }
     delete cache_;
     delete filter_policy_;
   }
@@ -464,13 +477,21 @@ class Benchmark {
 	  db_ = NULL;
 	  Open(); //DB::Open(opts, dbname_, &db_);
   }
-	
+
+	DB* SelectDBWithCfh(uint64_t rand_int) {
+    if (db_ != nullptr) {
+      return db_;
+    } else {
+      return multi_dbs_[rand_int % multi_dbs_.size()];
+    }
+  }
+
   struct trace_operation_t {
 	  char cmd;
 	  unsigned long long key;
 	  unsigned long param;
   };
-  struct trace_operation_t *trace_ops[10]; // Assuming maximum of 10 concurrent threads
+  struct trace_operation_t *trace_ops[32]; // Assuming maximum of 32 concurrent threads
 	
 	struct result_t {
 		unsigned long long ycsbdata;
@@ -487,7 +508,7 @@ class Benchmark {
 		unsigned long long kv_itnext;
 	};
 	
-  struct result_t results[10];
+  struct result_t results[32];
 	
   unsigned long long print_splitup(int tid) {
 	  struct result_t& result = results[tid];
@@ -580,20 +601,25 @@ class Benchmark {
 		  }
 		  curop++;
 		  total_ops++;
+      if (total_ops > FLAGS_max_replay_entries) {
+        fprintf(stderr, "Thread %d: Reached max replay entries (%llu)\n", tid, total_ops);
+        break;
+      }
 	  }
 	  fprintf(stderr, "Thread %d: Done parsing, %llu operations.\n", tid, total_ops);
   }
 	
   char valuebuf[MAX_VALUE_SIZE];
 	
-  void perform_op(DB *db, struct trace_operation_t *op, int tid) {
+  int perform_op(DB *db, struct trace_operation_t *op, int tid) {
 	  char keybuf[100];
 	  int keylen;
 	  Status status;
 	  instrumentation_type db_read_time;
 	  static struct ReadOptions roptions;
 	  static struct WriteOptions woptions;
-		
+		int datasize = 0;
+
 	  keylen = sprintf(keybuf, "user%llu", op->key);
 	  Slice key(keybuf, keylen);
 		
@@ -603,7 +629,8 @@ class Benchmark {
 		  //START_TIMING(db_read_t, db_read_time);
 		  status = db->Get(roptions, key, &value);
 		  //END_TIMING(db_read_t, db_read_time);		  
-		  sassert(status.ok());
+		  // sassert(status.ok());
+      datasize = keylen + value.length();
 		  result.ycsbdata += keylen + value.length();
 		  result.kvdata += keylen + value.length();
 		  //assert(value.length() == 1080);
@@ -611,11 +638,12 @@ class Benchmark {
 		  result.kv_g++;
 	  } else if (op->cmd == 'd') {
 		  status = db->Delete(woptions, key);
-		  sassert(status.ok());
+		  // sassert(status.ok());
 		  result.ycsbdata += keylen;
 		  result.kvdata += keylen;
 		  result.ycsb_d++;
 		  result.kv_d++;
+      datasize = keylen;
 	  } else if (op->cmd == 'i') {
 		  // op->param refers to the size of the value.
 		  status = db->Put(woptions, key, Slice(valuebuf, op->param));
@@ -624,16 +652,18 @@ class Benchmark {
 		  result.kvdata += keylen + op->param;
 		  result.ycsb_i++;
 		  result.kv_p++;
+      datasize = keylen + op->param;
 	  } else if (op->cmd == 'u') {
 		  int update_value_size = 1024;
 		  status = db->Put(woptions, key, Slice(valuebuf, update_value_size));
-		  sassert(status.ok());
+		  // sassert(status.ok());
 		  result.ycsbdata += keylen + op->param;
 		  //result.kvdata += 2 * (keylen + value.length());
 		  result.kvdata += keylen + update_value_size;
 		  result.ycsb_u++;
 		  result.kv_g++;
 		  result.kv_p++;
+      datasize = keylen + update_value_size;
 	  } else if (op->cmd == 's') {
 		  // op->param refers to the number of records to scan.
 		  int retrieved = 0;
@@ -656,12 +686,14 @@ class Benchmark {
 				
 			  result.kv_itnext++;
 			  retrieved ++;
+        datasize += (retklen + retvlen);
 		  }
 		  delete it;
 		  result.ycsb_s++;
 	  } else {
 		  assert(false);
 	  }
+    return datasize;
   }
 	
   #define envinput(var, type) {assert(getenv(#var)); int ret = sscanf(getenv(#var), type, &var); assert(ret == 1);}
@@ -690,8 +722,11 @@ class Benchmark {
 	  gettimeofday(&start, NULL);
 	  fprintf(stderr, "\nCompleted 0 ops");
 	  fflush(stderr);
+    
+    DB *db_with_cfh = SelectDBWithCfh(tid);
+
 	  while(curop->cmd) {
-		  perform_op(db_, curop, tid);
+		  int datasize = perform_op(db_with_cfh, curop, tid);
 		  thread->stats.FinishedSingleOp();
 		  curop++;
 		  total_ops++;
@@ -699,25 +734,25 @@ class Benchmark {
 		  //fprintf(stderr, "\rCompleted %llu ops", total_ops);
 		  //}
 	  }
-	  PrintStats("leveldb.stats");
-	  fprintf(stderr, "\r");
-	  ret = gettimeofday(&end, NULL);
-	  double secs = (end.tv_sec - start.tv_sec) + double(end.tv_usec - start.tv_usec) / 1000000;
+	  // PrintStats("leveldb.stats");
+	  // fprintf(stderr, "\r");
+	  // ret = gettimeofday(&end, NULL);
+	  // double secs = (end.tv_sec - start.tv_sec) + double(end.tv_usec - start.tv_usec) / 1000000;
 		
-	  struct result_t& result = results[tid];
-	  fprintf(stderr, "\n\nThread %d: Done replaying %llu operations.\n", tid, total_ops);
-	  unsigned long long splitup_ops = print_splitup(tid);
-	  assert(splitup_ops == total_ops);
-	  fprintf(stderr, "Thread %d: Time taken = %0.3lf seconds\n", tid, secs);
-	  fprintf(stderr, "Thread %d: Total data: YCSB = %0.6lf GB, HyperLevelDB = %0.6lf GB\n", tid,
-		 double(result.ycsbdata) / 1024.0 / 1024.0 / 1024.0,
-		 double(result.kvdata) / 1024.0 / 1024.0 / 1024.0);
-	  fprintf(stderr, "Thread %d: Ops/s = %0.3lf Kops/s\n", tid, double(total_ops) / 1024.0 / secs);
+	  // struct result_t& result = results[tid];
+	  // fprintf(stderr, "\n\nThread %d: Done replaying %llu operations.\n", tid, total_ops);
+	  // unsigned long long splitup_ops = print_splitup(tid);
+	  // assert(splitup_ops == total_ops);
+	  // fprintf(stderr, "Thread %d: Time taken = %0.3lf seconds\n", tid, secs);
+	  // fprintf(stderr, "Thread %d: Total data: YCSB = %0.6lf GB, HyperLevelDB = %0.6lf GB\n", tid,
+		//  double(result.ycsbdata) / 1024.0 / 1024.0 / 1024.0,
+		//  double(result.kvdata) / 1024.0 / 1024.0 / 1024.0);
+	  // fprintf(stderr, "Thread %d: Ops/s = %0.3lf Kops/s\n", tid, double(total_ops) / 1024.0 / secs);
 		
-	  double throughput = double(result.ycsbdata) / secs;
-	  fprintf(stderr, "Thread %d: YCSB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
-	  throughput = double(result.kvdata) / secs;
-	  fprintf(stderr, "Thread %d: HyperLevelDB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
+	  // double throughput = double(result.ycsbdata) / secs;
+	  // fprintf(stderr, "Thread %d: YCSB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
+	  // throughput = double(result.kvdata) / secs;
+	  // fprintf(stderr, "Thread %d: HyperLevelDB throughput = %0.6lf MB/s\n", tid, throughput / 1024.0 / 1024.0);
   }
 	
   void print_current_db_contents() {
@@ -848,9 +883,22 @@ class Benchmark {
                   name.ToString().c_str());
           method = nullptr;
         } else {
-          delete db_;
-          db_ = nullptr;
-          DestroyDB(FLAGS_db, Options());
+          // delete db_;
+          // db_ = nullptr;
+          // DestroyDB(FLAGS_db, Options());
+          if (db_ != nullptr) {
+            delete db_;
+            DestroyDB(FLAGS_db, Options());
+          }
+
+          for (size_t i = 0; i < multi_dbs_.size(); i++) {
+            delete multi_dbs_[i];
+            std::string dbname = FLAGS_db + std::to_string(i);
+
+            DestroyDB(dbname, Options());
+          }
+          
+          multi_dbs_.clear();
           Open();
         }
       }
@@ -1019,6 +1067,8 @@ class Benchmark {
   void Open() {
     assert(db_ == nullptr);
     Options options;
+    Status s;
+
     options.env = g_env;
     options.create_if_missing = !FLAGS_use_existing_db;
     options.block_cache = cache_;
@@ -1028,7 +1078,22 @@ class Benchmark {
     options.max_open_files = FLAGS_open_files;
     options.filter_policy = filter_policy_;
     options.reuse_logs = FLAGS_reuse_logs;
-    Status s = DB::Open(options, FLAGS_db, &db_);
+    options.compression = kNoCompression;
+
+    if (FLAGS_num_multi_db < 1) {
+      s = DB::Open(options, FLAGS_db, &db_);
+    } else {
+      multi_dbs_.clear();
+      multi_dbs_.resize(FLAGS_num_multi_db);
+      for (int i = 0; i < FLAGS_num_multi_db; i++) {
+        std::string dbname = FLAGS_db + std::to_string(i);
+        s = DB::Open(options, dbname, &multi_dbs_[i]);
+        if (!s.ok()) {
+          fprintf(stderr, "open error: (%s)\n", s.ToString().c_str());
+          exit(1);
+        }
+      }
+    }
     if (!s.ok()) {
       fprintf(stderr, "open error: (%s)\n", s.ToString().c_str());
       exit(1);
@@ -1296,10 +1361,18 @@ class Benchmark {
 
   void PrintStats(const char* key) {
     std::string stats;
-    if (!db_->GetProperty(key, &stats)) {
-      stats = "(failed)";
+    if (db_ != nullptr) {
+      if (!db_->GetProperty(key, &stats)) {
+        stats = "(failed)";
+      }
+      fprintf(stdout, "\n%s\n", stats.c_str());
     }
-    fprintf(stdout, "\n%s\n", stats.c_str());
+    for (const auto& db_with_cfh : multi_dbs_) {
+      if (!db_with_cfh->GetProperty(key, &stats)) {
+        stats = "(failed)";
+      }
+      fprintf(stdout, "\n%s\n", stats.c_str());
+    }
   }
 
   static void WriteToFile(void* arg, const char* buf, int n) {
@@ -1371,6 +1444,10 @@ int main(int argc, char** argv) {
       FLAGS_bloom_bits = n;
     } else if (sscanf(argv[i], "--open_files=%d%c", &n, &junk) == 1) {
       FLAGS_open_files = n;
+    } else if (sscanf(argv[i], "--num_multi_db=%d%c", &n, &junk) == 1) {
+      FLAGS_num_multi_db = n;
+    } else if (sscanf(argv[i], "--max_replay_entries=%d%c", &n, &junk) == 1) {
+      FLAGS_max_replay_entries = n;
     } else if (strncmp(argv[i], "--db=", 5) == 0) {
       FLAGS_db = argv[i] + 5;
     } else {

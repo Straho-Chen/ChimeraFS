@@ -136,6 +136,22 @@ void TableBuilder::Flush() {
   }
 }
 
+
+
+inline bool AddPadding(const char* input, size_t length,
+  ::std::string* output) {
+  // align input to up round 4K
+  size_t aligned_length = ((length + 4095) & ~4095) - kBlockTrailerSize;
+
+  output->resize(aligned_length);
+
+  // Copy input to the beginning of the output
+  std::copy(input, input + length, output->begin());
+  // Fill the rest with 0
+  std::fill(output->begin() + length, output->end(), '\0');
+  return true;  
+}
+
 void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   // File format contains a sequence of blocks where each block has:
   //    block_data: uint8[n]
@@ -149,10 +165,13 @@ void TableBuilder::WriteBlock(BlockBuilder* block, BlockHandle* handle) {
   CompressionType type = r->options.compression;
   // TODO(postrelease): Support more compression options: zlib?
   switch (type) {
-    case kNoCompression:
+    case kNoCompression: {
+      // std::string* compressed = &r->compressed_output;
+      // AddPadding(raw.data(), raw.size(), compressed);
+      // block_contents = *compressed;
       block_contents = raw;
       break;
-
+    }
     case kSnappyCompression: {
       std::string* compressed = &r->compressed_output;
       if (port::Snappy_Compress(raw.data(), raw.size(), compressed) &&

@@ -242,10 +242,17 @@ class PosixWritableFile : public WritableFile {
   int fd_;
   char buf_[kBufSize];
   size_t pos_;
+  bool log_file_;
 
  public:
   PosixWritableFile(const std::string& fname, int fd)
-      : filename_(fname), fd_(fd), pos_(0) { }
+      : filename_(fname), fd_(fd), pos_(0) { 
+        if (fname.find(".log") != std::string::npos) {
+          log_file_ = true;
+        } else {
+          log_file_ = false;
+        }
+      }
 
   ~PosixWritableFile() {
     if (fd_ >= 0) {
@@ -342,7 +349,12 @@ class PosixWritableFile : public WritableFile {
 
  private:
   Status FlushBuffered() {
-    Status s = WriteRaw(buf_, pos_);
+    size_t aligned_pos_ = pos_;
+    // round up to 4K
+    // if (log_file_) {
+    //   aligned_pos_ = (pos_ + 4095) & ~4095;
+    // }
+    Status s = WriteRaw(buf_, aligned_pos_);
     pos_ = 0;
     return s;
   }
