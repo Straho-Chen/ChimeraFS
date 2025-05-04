@@ -244,12 +244,12 @@ ssize_t odinfs_xip_file_read(struct file *filp, char __user *buf, size_t len,
 {
 	ssize_t res;
 	ODINFS_DEFINE_TIMING_VAR(xip_read_time);
-	ODINFS_DEFINE_TIMING_VAR(bd_read_time);
+	// ODINFS_DEFINE_TIMING_VAR(bd_read_time);
 
 	ODINFS_START_TIMING(xip_read_t, xip_read_time);
-	ODINFS_START_META_TIMING(bd_xip_read_t, bd_read_time);
+	// ODINFS_START_META_TIMING(bd_xip_read_t, bd_read_time);
 	call_xip_file_read();
-	ODINFS_END_META_TIMING(bd_xip_read_t, bd_read_time);
+	// ODINFS_END_META_TIMING(bd_xip_read_t, bd_read_time);
 	ODINFS_END_TIMING(xip_read_t, xip_read_time);
 	return res;
 }

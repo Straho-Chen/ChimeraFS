@@ -81,10 +81,10 @@ enum timing_category {
 
 enum timing_category_meta {
 	bd_xip_write_t,
-	bd_agent_copy_w_t,
+	// bd_agent_copy_w_t,
 
-	bd_xip_read_t,
-	bd_agent_copy_r_t,
+	// bd_xip_read_t,
+	// bd_agent_copy_r_t,
 
 	META_TIMING_NUM,
 };
