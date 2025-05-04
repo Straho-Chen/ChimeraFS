@@ -12,8 +12,6 @@ leveldb_dbbench=$ABS_PATH/../benchmark/bin/leveldb/dbbench
 database_dir=$pmem_dir/leveldbtest
 workload_dir=$ABS_PATH/workloads
 
-cow=1
-
 # FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 # FS=("winefs")
 
@@ -82,8 +80,8 @@ for fs in "${FS[@]}"; do
         # mount
         umount /mnt/pmem0
         dmesg -C
-        compile_fs "$fs" "0" "$cow"
-        bash "$TOOLS_PATH"/mount.sh "$fs" "cow=$cow"
+        compile_fs "$fs" "0"
+        bash "$TOOLS_PATH"/mount.sh "$fs"
 
         load_workload loada_1M $fs $job
         run_workload runa_1M_1M $fs $job
@@ -93,7 +91,7 @@ for fs in "${FS[@]}"; do
 
         bash "$TOOLS_PATH"/umount.sh "$fs"
         # remount
-        bash "$TOOLS_PATH"/mount.sh "$fs" "cow=$cow"
+        bash "$TOOLS_PATH"/mount.sh "$fs"
 
         load_workload loade_1M $fs $job
         run_workload rune_1M_1M $fs $job
@@ -116,8 +114,8 @@ for file_system in "${DELEGATION_FS[@]}"; do
             dmesg -C
             umount /mnt/pmem0
             rmmod parfs
-            compile_fs "$file_system" "0" "$cow"
-            bash "$TOOLS_PATH"/mount.sh "$file_system" "$del_thrds" "$cow"
+            compile_fs "$file_system" "0"
+            bash "$TOOLS_PATH"/mount.sh "$file_system" "$del_thrds"
 
             load_workload loada_1M $file_system-$del_thrds $job
             run_workload runa_1M_1M $file_system-$del_thrds $job
@@ -128,7 +126,7 @@ for file_system in "${DELEGATION_FS[@]}"; do
             bash "$TOOLS_PATH"/umount.sh "$file_system"
 
             # remount
-            bash "$TOOLS_PATH"/mount.sh "$file_system" "$del_thrds" "$cow"
+            bash "$TOOLS_PATH"/mount.sh "$file_system" "$del_thrds"
 
             load_workload loade_1M $file_system-$del_thrds $job
             run_workload rune_1M_1M $file_system-$del_thrds $job

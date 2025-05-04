@@ -9,10 +9,9 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("nova" "odinfs" "parfs" "nvodin")
-FS=("nova" "parfs" "nvodin")
+FS=("nova" "cknova" "parfs" "nvodin")
 
-DELEGATION_FS=("odinfs" "parfs" "nvodin")
+DELEGATION_FS=("parfs" "nvodin")
 
 del_thrds=(12)
 
@@ -26,8 +25,8 @@ NUM_JOBS=(1)
 TABLE_NAME_NOVA="$ABS_PATH/performance-comparison-table-nova"
 table_create "$TABLE_NAME_NOVA" "workloads total_time(ns) meta(ns) data(ns)"
 
-TABLE_NAME_ODINFS="$ABS_PATH/performance-comparison-table-odinfs"
-table_create "$TABLE_NAME_ODINFS" "workloads total_time(ns) meta(ns) data(ns)"
+TABLE_NAME_CKNOVA="$ABS_PATH/performance-comparison-table-cknova"
+table_create "$TABLE_NAME_CKNOVA" "workloads total_time(ns) meta(ns) data(ns)"
 
 TABLE_NAME_PARFS="$ABS_PATH/performance-comparison-table-parfs"
 table_create "$TABLE_NAME_PARFS" "workloads total_time(ns) meta(ns) data(ns)"
@@ -57,10 +56,10 @@ do_fio() {
 
     # if $fs fall in delegation fs
     if [[ "${DELEGATION_FS[@]}" =~ "$fs" ]]; then
-        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds" "1"
+        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds"
         fs=$fs-$del_thrds
     else
-        bash "$TOOLS_PATH"/mount.sh "$fs" "cow=1"
+        bash "$TOOLS_PATH"/mount.sh "$fs"
     fi
 
     BW=$(bash "$TOOLS_PATH"/fio.sh "$fpath" "$bsz" "$fsize" "$job" "$op" | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
@@ -73,7 +72,7 @@ do_fio() {
 mkdir -p "$ABS_PATH"/M_DATA/fio
 
 for fs in "${FS[@]}"; do
-    compile_fs "$fs" "1" "1"
+    compile_fs "$fs" "1"
     for bsz in "${BLK_SIZES[@]}"; do
         for job in "${NUM_JOBS[@]}"; do
             for workload in "${WORKLOADS[@]}"; do
@@ -98,8 +97,8 @@ for fs in "${FS[@]}"; do
 
                 if [[ "${fs}" == "nova" ]]; then
                     table_add_row "$TABLE_NAME_NOVA" "$workload $total_time $meta_time $data_time"
-                elif [[ "${fs}" == "odinfs" ]]; then
-                    table_add_row "$TABLE_NAME_ODINFS" "$workload $total_time $meta_time $data_time"
+                elif [[ "${fs}" == "cknova" ]]; then
+                    table_add_row "$TABLE_NAME_CKNOVA" "$workload $total_time $meta_time $data_time"
                 elif [[ "${fs}" == "parfs" ]]; then
                     table_add_row "$TABLE_NAME_PARFS" "$workload $total_time $meta_time $data_time"
                 elif [[ "${fs}" == "nvodin" ]]; then

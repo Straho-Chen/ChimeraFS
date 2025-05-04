@@ -1,0 +1,5 @@
+fs fbench threads iops create delete close read write IO
+parfs-12 fileserver.f 1 43218.671 0.0 0.0 0.0 0.1 0.1 0.2
+parfs-12 varmail.f 1 202976.280 0.0 0.0 0.0 0.0 0.0 0
+parfs-12 webserver.f 1 252843.933 0.0 0 0.0 0.0 0.0 0
+parfs-12 webproxy.f 1 209574.503 0.0 0.0 0.0 0.0 0.0 0

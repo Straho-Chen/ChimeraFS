@@ -69,8 +69,6 @@ function dmesg_attr_time() {
 function compile_fs() {
     local fs=$1
     local bd=$2
-    local cow=$3
-
     ABS_PATH=$(where_is_script "$0")
     FS_DIR=$ABS_PATH/../../fs
     dir_change() (
@@ -80,7 +78,7 @@ function compile_fs() {
             make BUILD_TARGETS="madfs"
             cd "$FS_DIR" || exit
         else
-            bash compile.sh "$fs" "$bd" "$cow"
+            bash compile.sh "$fs" "$bd"
         fi
     )
     dir_change

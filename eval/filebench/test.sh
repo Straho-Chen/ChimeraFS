@@ -13,17 +13,15 @@ TOOLS_PATH=$ABS_PATH/../tools
 FSCRIPT_PRE_FIX=$TOOLS_PATH/fbscripts
 FB_PATH=$ABS_PATH/../benchmark/bin/filebench/bin
 
-cow=0
+# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
-FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
-
-DELEGATION_FS=("odinfs" "parfs")
-# DELEGATION_FS=("parfs")
+# DELEGATION_FS=("odinfs" "parfs")
+DELEGATION_FS=("parfs")
 
 FILE_BENCHES=("fileserver.f" "varmail.f" "webserver.f" "webproxy.f")
 
-# THREADS=(1 2 4 8 16 28 32)
-THREADS=(1)
+THREADS=(1 2 4 8 16 28 32)
+# THREADS=(1)
 
 # DEL_THRDS=(1 2 4 8 12)
 DEL_THRDS=(12)
@@ -51,10 +49,10 @@ do_fb() {
 
     # if $fs fall in delegation fs
     if [[ "${DELEGATION_FS[@]}" =~ "$fs" ]]; then
-        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds" "$cow"
+        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds"
         fs=$fs-$del_thrds
     else
-        bash "$TOOLS_PATH"/mount.sh "$fs" "cow=$cow"
+        bash "$TOOLS_PATH"/mount.sh "$fs"
     fi
 
     cp -f "$FSCRIPT_PRE_FIX"/"$fbench" "$ABS_PATH"/DATA/"$fbench"/"$thread"
@@ -110,7 +108,7 @@ do_fb() {
 }
 
 for fs in "${FS[@]}"; do
-    compile_fs "$fs" "0" "$cow"
+    compile_fs "$fs" "0"
     for fbench in "${FILE_BENCHES[@]}"; do
         mkdir -p "$ABS_PATH"/DATA/"$fbench"
         for thrd in "${THREADS[@]}"; do
@@ -126,7 +124,7 @@ done
 # for delegation fs
 
 for fs in "${DELEGATION_FS[@]}"; do
-    compile_fs "$fs" "0" "$cow"
+    compile_fs "$fs" "0"
     for del_thrds in "${DEL_THRDS[@]}"; do
         for fbench in "${FILE_BENCHES[@]}"; do
             mkdir -p "$ABS_PATH"/DATA/"$fbench"

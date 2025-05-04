@@ -14,10 +14,9 @@ TOOLS_PATH=$ABS_PATH/../tools
 FSCRIPT_PRE_FIX=$TOOLS_PATH/fbscripts
 FB_PATH=$ABS_PATH/../benchmark/bin/filebench/bin
 
-# FS=("nova" "odinfs" "parfs" "nvodin")
-FS=("nova" "parfs" "nvodin")
+FS=("nova" "cknova" "parfs" "nvodin")
 
-DELEGATION_FS=("odinfs" "parfs" "nvodin")
+DELEGATION_FS=("parfs" "nvodin")
 
 del_thrds=(12)
 
@@ -27,7 +26,7 @@ THREADS=(1)
 
 TABLE_NAME_NOVA="$ABS_PATH/performance-comparison-table-nova"
 
-TABLE_NAME_ODINFS="$ABS_PATH/performance-comparison-table-odinfs"
+TABLE_NAME_CKNOVA="$ABS_PATH/performance-comparison-table-cknova"
 
 TABLE_NAME_PARFS="$ABS_PATH/performance-comparison-table-parfs"
 
@@ -47,10 +46,10 @@ do_fb() {
 
     # if $fs fall in delegation fs
     if [[ "${DELEGATION_FS[@]}" =~ "$fs" ]]; then
-        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds" "1"
+        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds"
         fs=$fs-$del_thrds
     else
-        bash "$TOOLS_PATH"/mount.sh "$fs" "cow=1"
+        bash "$TOOLS_PATH"/mount.sh "$fs"
     fi
 
     cp -f "$FSCRIPT_PRE_FIX"/"$fbench" "$ABS_PATH"/DATA/"$fbench"/"$thread"
@@ -70,7 +69,7 @@ do_fb() {
 mkdir -p "$ABS_PATH"/M_DATA/filebench
 
 for fs in "${FS[@]}"; do
-    compile_fs "$fs" "1" "1"
+    compile_fs "$fs" "1"
     for thrd in "${THREADS[@]}"; do
         for workload in "${FILE_BENCHES[@]}"; do
             mkdir -p "$ABS_PATH"/DATA/"$workload"
@@ -94,8 +93,8 @@ for fs in "${FS[@]}"; do
 
             if [[ "${fs}" == "nova" ]]; then
                 table_add_row "$TABLE_NAME_NOVA" "$workload $total_time $meta_time $data_time"
-            elif [[ "${fs}" == "odinfs" ]]; then
-                table_add_row "$TABLE_NAME_ODINFS" "$workload $total_time $meta_time $data_time"
+            elif [[ "${fs}" == "cknova" ]]; then
+                table_add_row "$TABLE_NAME_CKNOVA" "$workload $total_time $meta_time $data_time"
             elif [[ "${fs}" == "parfs" ]]; then
                 table_add_row "$TABLE_NAME_PARFS" "$workload $total_time $meta_time $data_time"
             elif [[ "${fs}" == "nvodin" ]]; then

@@ -10,13 +10,11 @@ ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
 # FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs" "idel")
-# FS=("idel")
+# FS=("nova")
 
-DELEGATION_FS=("odinfs" "parfs")
-# DELEGATION_FS=("parfs")
+# DELEGATION_FS=("odinfs" "parfs")
+DELEGATION_FS=("parfs")
 # DELEGATION_FS=("odinfs")
-
-cow=1
 
 # UFS=("madfs")
 
@@ -25,8 +23,8 @@ TOTAL_FILE_SIZE=$((32 * 1024))
 
 # NUM_JOBS=(1 2 4 8 16 28 32 48 56)
 # NUM_JOBS=(1 2 4 8 16 28 32)
-NUM_JOBS=(28)
-# NUM_JOBS=(1)
+# NUM_JOBS=(28)
+NUM_JOBS=(1)
 
 # in B
 BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
@@ -70,10 +68,10 @@ do_fio() {
 
     # if $fs fall in delegation fs
     if [[ "${DELEGATION_FS[@]}" =~ "$fs" ]]; then
-        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds" "$cow"
+        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds"
         fs=$fs-$del_thrds
     else
-        bash "$TOOLS_PATH"/mount.sh "$fs" "cow=$cow"
+        bash "$TOOLS_PATH"/mount.sh "$fs"
     fi
 
     BW=$(bash "$TOOLS_PATH"/fio.sh "$fpath" "$bsz" "$fsize" "$job" "$op" | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
@@ -87,7 +85,7 @@ do_fio() {
 # for normal fs
 
 for fs in "${FS[@]}"; do
-    compile_fs "$fs" "0" "$cow"
+    compile_fs "$fs" "0"
     for bsz in "${BLK_SIZES[@]}"; do
         for job in "${NUM_JOBS[@]}"; do
             fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
@@ -111,7 +109,7 @@ done
 # for delegation fs
 
 for fs in "${DELEGATION_FS[@]}"; do
-    compile_fs "$fs" "0" "$cow"
+    compile_fs "$fs" "0"
     for del_thrds in "${DEL_THRDS[@]}"; do
         for bsz in "${BLK_SIZES[@]}"; do
             for job in "${NUM_JOBS[@]}"; do

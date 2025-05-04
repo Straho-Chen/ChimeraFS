@@ -1,0 +1,7 @@
+workloads total_time(ns) meta(ns) data(ns)
+write 29928934107  
+randwrite 31639609812  
+fileserver.f 4961026592  
+varmail.f 1762709202  
+webserver.f 814833526  
+webproxy.f 863495551  

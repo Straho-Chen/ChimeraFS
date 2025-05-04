@@ -28,16 +28,10 @@ function checkout_branch() (
 
 arg_fs=$1
 arg_bd=$2
-cow=$3
 
 timing=0
-if [[ "$cow" == "1" ]]; then
-    data_checksum=1
-    metadata_checksum=1
-else
-    data_checksum=0
-    metadata_checksum=0
-fi
+data_checksum=0
+mcsum=0
 
 chsm_fs=(nova parfs)
 
@@ -66,14 +60,18 @@ else
     meta_breakdown=0
 fi
 
+if [[ "$arg_fs" == "cknova" ]]; then
+    echo "arg_fs: $arg_fs set mcsum 1"
+    mcsum=1
+    fs=(nova)
+elif [[ " ${parfs_branch[@]} " =~ " ${arg_fs} " ]]; then
+    data_checksum=1
+fi
+
 if [[ " ${parfs_branch[@]} " =~ " ${arg_fs} " ]]; then
     echo "checkout branch $arg_fs"
     checkout_branch $arg_fs
     fs=($arg_fs)
-elif [[ " ${default_fs[@]} " =~ " ${arg_fs} " ]]; then
-    fs=($arg_fs)
-else
-    exit 0
 fi
 
 # Work around, will fix
@@ -85,12 +83,12 @@ for i in ${fs[@]}; do
     sudo rmmod $i
     # if fs fall in chsm_fs, then enable checksum
     if [[ " ${chsm_fs[@]} " =~ " ${i} " ]]; then
-        sudo insmod build/$i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum metadata_csum=$metadata_checksum
-        sudo insmod $i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum metadata_csum=$metadata_checksum
+        sudo insmod build/$i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum mcsum=$mcsum
+        sudo insmod $i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum mcsum=$mcsum
     elif [[ " ${parfs_branch[@]} " =~ " ${i} " ]]; then
         sudo rmmod parfs
-        sudo insmod build/parfs.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum metadata_csum=$metadata_checksum
-        sudo insmod parfs.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum metadata_csum=$metadata_checksum
+        sudo insmod build/parfs.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum
+        sudo insmod parfs.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum
     else
         sudo insmod build/$i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown
         sudo insmod $i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown

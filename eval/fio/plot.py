@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-blksize="2m"
+blksize="32k"
 
 # 解析文件并将数据组织为DataFrame
 def parse_data(filename):
@@ -29,7 +29,8 @@ def parse_data(filename):
     return pd.DataFrame(data)
 
 # 读取数据
-filename = f"performance-comparison-table-odinfs-blksize-{blksize}"  # 替换为您的文件路径
+filename = f"performance-comparison-table-restore1-{blksize}"  # 替换为您的文件路径
+# filename = f"performance-comparison-table-compare-{blksize}"  # 替换为您的文件路径
 data = parse_data(filename)
 
 cur_dir = os.path.abspath(os.path.dirname(__file__))

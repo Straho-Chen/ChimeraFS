@@ -13,8 +13,6 @@ pmem_dir=/mnt/pmem0
 PROFILER_PATH=/home/straho/linux-tools/perf/profiler/profiler
 perf=0
 
-cow=1
-
 # FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 # FS=("winefs")
 
@@ -88,8 +86,8 @@ for fs in "${FS[@]}"; do
         echo "Running with $job threads"
         for workload in "${WORKLOADS[@]}"; do
             dmesg -C
-            compile_fs "$fs" "0" "$cow"
-            bash "$TOOLS_PATH"/mount.sh "$fs" "cow=$cow"
+            compile_fs "$fs" "0"
+            bash "$TOOLS_PATH"/mount.sh "$fs"
             run_benchmark $fs $job $workload
             bash "$TOOLS_PATH"/umount.sh "$fs"
             dmesg >$output/$fs/LOG-$job
@@ -107,8 +105,8 @@ for file_system in "${DELEGATION_FS[@]}"; do
             echo "Running with $job threads"
             for workload in "${WORKLOADS[@]}"; do
                 dmesg -C
-                compile_fs "$file_system" "0" "$cow"
-                bash "$TOOLS_PATH"/mount.sh "$file_system" "$del_thrds" $cow
+                compile_fs "$file_system" "0"
+                bash "$TOOLS_PATH"/mount.sh "$file_system" "$del_thrds"
                 run_benchmark $file_system-$del_thrds $job $workload
                 bash "$TOOLS_PATH"/umount.sh "$file_system"
                 dmesg >$output/$fs/LOG-$job

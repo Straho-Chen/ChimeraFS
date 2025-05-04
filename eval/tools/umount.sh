@@ -11,5 +11,10 @@ ABS_PATH=$(where_is_script "$0")
 
 MOUNT_SCRIPT_PATH=$ABS_PATH/mount-scripts
 
-fs=$1
-$MOUNT_SCRIPT_PATH/umount-$fs.sh
+mount_fs=$1
+
+if [[ "$mount_fs" == "cknova" ]]; then
+    mount_fs=nova
+fi
+
+$MOUNT_SCRIPT_PATH/umount-$mount_fs.sh

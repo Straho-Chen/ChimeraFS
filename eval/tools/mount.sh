@@ -20,24 +20,16 @@ echo 3 | sudo tee /proc/sys/vm/drop_caches
 sync
 echo 3 | sudo tee /proc/sys/vm/drop_caches
 
-fs=$1
+mount_fs=$1
 del_thrds=$2
-cow=1
 
-if [[ "$del_thrds" =~ ^[0-9]+$ ]]; then
-    cow=$3
-    echo "set delegation threads to $del_thrds with cow=$cow"
-elif [[ "$del_thrds" == "cow=1" ]]; then
-    cow=1
-elif [[ "$del_thrds" == "cow=0" ]]; then
-    cow=0
+if [[ "$mount_fs" == "cknova" ]]; then
+    mount_fs=nova
 fi
-
-echo "Mounting $fs with cow=$cow"
 
 # if del_thrds is not null, pass it to the mount script
 if [ -z "$del_thrds" ]; then
-    $MOUNT_SCRIPT_PATH/mount-$fs.sh $cow
+    $MOUNT_SCRIPT_PATH/mount-$mount_fs.sh
 else
-    $MOUNT_SCRIPT_PATH/mount-$fs.sh $del_thrds $cow
+    $MOUNT_SCRIPT_PATH/mount-$mount_fs.sh $del_thrds
 fi

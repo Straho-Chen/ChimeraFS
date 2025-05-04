@@ -1,0 +1,2 @@
+/dev/pmem0 0
+/dev/pmem1 1
