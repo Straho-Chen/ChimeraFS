@@ -141,6 +141,7 @@ extern unsigned int nova_dbgmask;
 extern int measure_timing;
 extern int measure_meta_timing;
 extern int metadata_csum;
+extern int mcsum;
 extern int unsafe_metadata;
 extern int wprotect;
 extern int data_csum;

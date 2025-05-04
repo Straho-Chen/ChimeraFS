@@ -46,6 +46,7 @@
 int measure_timing;
 int measure_meta_timing;
 int metadata_csum;
+int mcsum;
 int wprotect;
 int data_csum;
 int data_parity;
@@ -61,6 +62,9 @@ MODULE_PARM_DESC(measure_meta_timing, "Timing measurement for meta breakdown");
 module_param(metadata_csum, int, 0444);
 MODULE_PARM_DESC(metadata_csum,
 		 "Protect metadata structures with replication and checksums");
+
+module_param(mcsum, int, 0444);
+MODULE_PARM_DESC(mcsum, "Orderless log through meta csum");
 
 module_param(wprotect, int, 0444);
 MODULE_PARM_DESC(wprotect,
@@ -643,9 +647,9 @@ static int nova_fill_super(struct super_block *sb, void *data, int silent)
 	}
 
 	nova_dbg(
-		"measure timing %d, metadata checksum %d, wprotect %d, data checksum %d, data parity %d, DRAM checksum %d\n",
-		measure_timing, metadata_csum, wprotect, data_csum, data_parity,
-		dram_struct_csum);
+		"measure timing %d, metadata checksum %d, mcsum: %d, wprotect %d, data checksum %d, data parity %d, DRAM checksum %d\n",
+		measure_timing, metadata_csum, mcsum, wprotect, data_csum,
+		data_parity, dram_struct_csum);
 
 	get_random_bytes(&random, sizeof(u32));
 	atomic_set(&sbi->next_generation, random);
