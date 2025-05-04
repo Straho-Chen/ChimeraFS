@@ -1,0 +1,8 @@
+fs num_job fill_seq(MB/s) fillrandom(MB/s) appendrandom(MB/s) updaterandom(MB/s)
+parfs-12 1 186.4 179.3 305.0 229.4
+parfs-12 2 419.9 403.9 430.5 358.4
+parfs-12 4 760.8 737.5 752.4 525.6
+parfs-12 8 1332.5 1318.2 1248.7 1096.5
+parfs-12 16 1781.5 1790.8 1983.9 1422.0
+parfs-12 28 1916.2 1898.3 2451.0 1789.7
+parfs-12 32 1915.3 1852.2 2391.2 1667.7
