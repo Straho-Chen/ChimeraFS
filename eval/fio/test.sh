@@ -9,12 +9,14 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs" "idel")
+# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs" "idel")
 # FS=("idel")
 
 DELEGATION_FS=("odinfs" "parfs")
 # DELEGATION_FS=("parfs")
 # DELEGATION_FS=("odinfs")
+
+cow=1
 
 # UFS=("madfs")
 
@@ -22,8 +24,8 @@ DELEGATION_FS=("odinfs" "parfs")
 TOTAL_FILE_SIZE=$((32 * 1024))
 
 # NUM_JOBS=(1 2 4 8 16 28 32 48 56)
-NUM_JOBS=(1 2 4 8 16 28 32)
-# NUM_JOBS=(28)
+# NUM_JOBS=(1 2 4 8 16 28 32)
+NUM_JOBS=(28)
 # NUM_JOBS=(1)
 
 # in B

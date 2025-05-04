@@ -30,7 +30,7 @@ arg_fs=$1
 arg_bd=$2
 cow=$3
 
-timing=1
+timing=0
 if [[ "$cow" == "1" ]]; then
     data_checksum=1
     metadata_checksum=1

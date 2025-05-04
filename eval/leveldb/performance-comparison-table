@@ -1,0 +1,8 @@
+fs num_job loada(micros/op) runa(micros/op) runb(micros/op) runc(micros/op) rund(micros/op) loade(micros/op) rune(micros/op) runf(micros/op)
+odinfs-12 1 4.162 16.236 9.034 9.459 2.860 4.250  
+odinfs-12 2 4.520     4.757  
+odinfs-12 4 5.014     5.015  
+odinfs-12 8 5.105     5.444  
+odinfs-12 16 6.907     7.576  
+odinfs-12 28 12.093     13.053  
+odinfs-12 32 15.296     16.138  

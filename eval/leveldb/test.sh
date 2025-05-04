@@ -14,19 +14,20 @@ workload_dir=$ABS_PATH/workloads
 
 cow=1
 
-FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
+# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 # FS=("winefs")
 
-DELEGATION_FS=("odinfs" "parfs")
+# DELEGATION_FS=("odinfs" "parfs")
 # DELEGATION_FS=("parfs")
+DELEGATION_FS=("odinfs")
 
 # UFS=("madfs")
 
 # DEL_THRDS=(1 2 4 8 12)
 DEL_THRDS=(12)
 
-NUM_JOBS=(1)
-# NUM_JOBS=(1 2 4 8 16 28 32)
+# NUM_JOBS=(1)
+NUM_JOBS=(1 2 4 8 16 28 32)
 
 rm -rf $output
 
@@ -41,7 +42,7 @@ load_workload() {
     export trace_file=$workload_dir/$tracefile
     mkdir -p $output/$fs/$threads
 
-    $leveldb_dbbench --num_multi_db="$threads" --max_replay_entries=10000 --use_existing_db=0 --benchmarks=ycsb --db=$database_dir --max_file_size=$((128 * 1024 * 1024 * 1024)) --threads="$threads" --open_files=1000 2>&1 | tee $output/$fs/$threads/$tracefile
+    $leveldb_dbbench --num_multi_db="$threads" --max_replay_entries=10000 --use_existing_db=0 --benchmarks=ycsb --db=$database_dir --max_file_size=$((128 * 1024 * 1024 * 1024)) --threads="$threads" --open_files=10000 2>&1 | tee $output/$fs/$threads/$tracefile
 
     ycsb_result=$(grep -oP 'ycsb\s*:\s*\K\d+(\.\d+)?' $output/$fs/$threads/$tracefile)
     echo -n " $ycsb_result" >>$result
@@ -61,7 +62,7 @@ run_workload() {
     export trace_file=$workload_dir/$tracefile
     mkdir -p $output/$fs/$threads/
 
-    $leveldb_dbbench --num_multi_db="$threads" --max_replay_entries=10000 --use_existing_db=1 --benchmarks=ycsb --db=$database_dir --threads="$threads" --max_file_size=$((128 * 1024 * 1024 * 1024)) --open_files=1000 2>&1 | tee $output/$fs/$threads/$tracefile
+    $leveldb_dbbench --num_multi_db="$threads" --max_replay_entries=10000 --use_existing_db=1 --benchmarks=ycsb --db=$database_dir --threads="$threads" --max_file_size=$((128 * 1024 * 1024 * 1024)) --open_files=10000 2>&1 | tee $output/$fs/$threads/$tracefile
 
     ycsb_result=$(grep -oP 'ycsb\s*:\s*\K\d+(\.\d+)?' $output/$fs/$threads/$tracefile)
     echo -n " $ycsb_result" >>$result
@@ -91,7 +92,6 @@ for fs in "${FS[@]}"; do
         run_workload rund_1M_1M $fs $job
 
         bash "$TOOLS_PATH"/umount.sh "$fs"
-        dmesg > LOG-$fs-$job
         # remount
         bash "$TOOLS_PATH"/mount.sh "$fs" "cow=$cow"
 
@@ -126,7 +126,6 @@ for file_system in "${DELEGATION_FS[@]}"; do
             run_workload rund_1M_1M $file_system-$del_thrds $job
 
             bash "$TOOLS_PATH"/umount.sh "$file_system"
-            dmesg > LOG-$fs-$job
 
             # remount
             bash "$TOOLS_PATH"/mount.sh "$file_system" "$del_thrds" "$cow"

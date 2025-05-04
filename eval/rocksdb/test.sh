@@ -15,17 +15,17 @@ perf=0
 
 cow=1
 
-FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
-FS=("winefs")
+# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
+# FS=("winefs")
 
-DELEGATION_FS=("odinfs" "parfs")
+# DELEGATION_FS=("odinfs" "parfs")
 DELEGATION_FS=("parfs")
 
 # DEL_THRDS=(1 2 4 8 12)
 DEL_THRDS=(12)
 
-# NUM_JOBS=(1 2 4 8 16 28 32)
-NUM_JOBS=(16)
+NUM_JOBS=(1 2 4 8 16 28 32)
+# NUM_JOBS=(16)
 
 WORKLOADS=("fillseq" "fillrandom" "appendrandom" "updaterandom")
 # WORKLOADS=("fillseq")
@@ -52,7 +52,7 @@ run_benchmark() {
             --level0_stop_writes_trigger=24 --statistics=0 --stats_per_interval=0 --stats_interval=1048576 \
             --histogram=0 --use_plain_table=1 --open_files=-1 --mmap_read=0 --mmap_write=0 \
             --bloom_bits=10 --bloom_locality=1 \
-            --benchmarks="$workload" --use_existing_db=0 --num=1000000 --threads="$threads" &
+            --benchmarks="$workload" --use_existing_db=0 --num=10000 --threads="$threads" &
         rocksdb_pid=$!
         $PROFILER_PATH $rocksdb_pid &
         profiler_pid=$!
@@ -69,8 +69,7 @@ run_benchmark() {
             --max_background_compactions=4 --max_background_flushes=0 --level0_slowdown_writes_trigger=16 \
             --level0_stop_writes_trigger=24 --statistics=0 --stats_per_interval=0 --stats_interval=1048576 \
             --histogram=0 --use_plain_table=1 --open_files=-1 --mmap_read=0 --mmap_write=0 \
-            --bloom_bits=10 --bloom_locality=1 --block_size=4096 --use_direct_io_for_flush_and_compaction=1\
-            --benchmarks="$workload" --use_existing_db=0 --num=1000 --threads="$threads" 2>&1 | tee $output/$fs/$threads/rocksdb
+            --bloom_bits=10 --bloom_locality=1 --block_size=4096 --use_direct_io_for_flush_and_compaction=1 --benchmarks="$workload" --use_existing_db=0 --num=10000 --threads="$threads" 2>&1 | tee $output/$fs/$threads/rocksdb
 
         throughput=$(cat $output/$fs/$threads/rocksdb | grep -oE '[0-9]+\.[0-9]+ MB/s' | sed 's/ MB\/s//')
         echo -n " $throughput" >>$result
@@ -82,8 +81,8 @@ run_benchmark() {
 
 echo "fs num_job fill_seq(MB/s) fillrandom(MB/s) appendrandom(MB/s) updaterandom(MB/s)" >$result
 
-for job in "${NUM_JOBS[@]}"; do
-    for fs in "${FS[@]}"; do
+for fs in "${FS[@]}"; do
+    for job in "${NUM_JOBS[@]}"; do
         echo -n $fs >>$result
         echo -n " $job" >>$result
         echo "Running with $job threads"
@@ -93,15 +92,15 @@ for job in "${NUM_JOBS[@]}"; do
             bash "$TOOLS_PATH"/mount.sh "$fs" "cow=$cow"
             run_benchmark $fs $job $workload
             bash "$TOOLS_PATH"/umount.sh "$fs"
-            dmesg > LOG-$fs-$job
+            dmesg >$output/$fs/LOG-$job
         done
 
         echo "" >>$result
     done
 done
 
-for job in "${NUM_JOBS[@]}"; do
-    for file_system in "${DELEGATION_FS[@]}"; do
+for file_system in "${DELEGATION_FS[@]}"; do
+    for job in "${NUM_JOBS[@]}"; do
         for del_thrds in "${DEL_THRDS[@]}"; do
             echo -n $file_system-$del_thrds >>$result
             echo -n " $job" >>$result
@@ -112,7 +111,7 @@ for job in "${NUM_JOBS[@]}"; do
                 bash "$TOOLS_PATH"/mount.sh "$file_system" "$del_thrds" $cow
                 run_benchmark $file_system-$del_thrds $job $workload
                 bash "$TOOLS_PATH"/umount.sh "$file_system"
-                dmesg > LOG-$fs-$job
+                dmesg >$output/$fs/LOG-$job
             done
 
             echo "" >>$result
