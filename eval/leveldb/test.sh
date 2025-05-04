@@ -18,8 +18,8 @@ cow=1
 # FS=("winefs")
 
 # DELEGATION_FS=("odinfs" "parfs")
-# DELEGATION_FS=("parfs")
-DELEGATION_FS=("odinfs")
+DELEGATION_FS=("parfs")
+# DELEGATION_FS=("odinfs")
 
 # UFS=("madfs")
 
