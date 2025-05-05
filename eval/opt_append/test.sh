@@ -9,7 +9,9 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-DELEGATION_FS=("parfs" "parfs-no-opt-append")
+FS=("nova")
+
+# DELEGATION_FS=("parfs" "parfs-no-opt-append")
 
 # in MB
 TOTAL_FILE_SIZE=$((32 * 1024))
@@ -65,6 +67,21 @@ do_fio() {
     table_add_row "$TABLE_NAME" "$fs $op $fsize $bsz $job $BW"
     fs=$fs_raw
 }
+
+for fs in "${FS[@]}"; do
+    compile_fs "$fs" "0"
+    for bsz in "${BLK_SIZES[@]}"; do
+        for job in "${NUM_JOBS[@]}"; do
+            fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
+            for ((i = 1; i <= loop; i++)); do
+
+                do_fio "$fs" "write" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
+
+            done
+        done
+    done
+done
 
 for fs in "${DELEGATION_FS[@]}"; do
     compile_fs "$fs" "0"

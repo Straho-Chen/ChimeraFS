@@ -27,3 +27,17 @@ parfs-no-opt-append-12 write 1170 1024 28 700
 parfs-no-opt-append-12 randwrite 1170 1024 28 900
 parfs-no-opt-append-12 write 1024 1024 32 718
 parfs-no-opt-append-12 randwrite 1024 1024 32 880
+nova write 32768 1024 1 169
+nova randwrite 32768 1024 1 107
+nova write 16384 1024 2 377
+nova randwrite 16384 1024 2 278
+nova write 8192 1024 4 709
+nova randwrite 8192 1024 4 498
+nova write 4096 1024 8 1006
+nova randwrite 4096 1024 8 734
+nova write 2048 1024 16 941
+nova randwrite 2048 1024 16 851
+nova write 1170 1024 28 823
+nova randwrite 1170 1024 28 782
+nova write 1024 1024 32 787
+nova randwrite 1024 1024 32 767
