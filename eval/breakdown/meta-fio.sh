@@ -20,7 +20,7 @@ WORKLOADS=("write" "randwrite")
 TOTAL_FILE_SIZE=$((32 * 1024))
 # BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
 BLK_SIZES=($((4 * 1024)))
-NUM_JOBS=(1)
+NUM_JOBS=(32)
 
 TABLE_NAME_NOVA="$ABS_PATH/performance-comparison-table-nova"
 table_create "$TABLE_NAME_NOVA" "workloads total_time(ns) meta(ns) data(ns)"

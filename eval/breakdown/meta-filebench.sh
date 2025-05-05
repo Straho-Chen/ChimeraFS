@@ -22,7 +22,7 @@ del_thrds=(12)
 
 FILE_BENCHES=("fileserver.f" "varmail.f" "webserver.f" "webproxy.f")
 
-THREADS=(1)
+THREADS=(32)
 
 TABLE_NAME_NOVA="$ABS_PATH/performance-comparison-table-nova"
 
