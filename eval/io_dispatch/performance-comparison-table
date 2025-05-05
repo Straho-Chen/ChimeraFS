@@ -1,0 +1,15 @@
+fs ops filesz blksz numjobs bandwidth(MiB/s)
+parfs-12 write 32768 32768 1 2493
+parfs-12 randwrite 32768 32768 1 2426
+parfs-12 write 16384 32768 2 4570
+parfs-12 randwrite 16384 32768 2 4312
+parfs-12 write 8192 32768 4 8275
+parfs-12 randwrite 8192 32768 4 7950
+parfs-12 write 4096 32768 8 12595.2
+parfs-12 randwrite 4096 32768 8 12083.2
+parfs-12 write 2048 32768 16 13721.6
+parfs-12 randwrite 2048 32768 16 14131.2
+parfs-12 write 1170 32768 28 13824
+parfs-12 randwrite 1170 32768 28 13721.6
+parfs-12 write 1024 32768 32 13312
+parfs-12 randwrite 1024 32768 32 12902.4
