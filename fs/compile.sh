@@ -37,7 +37,7 @@ chsm_fs=(nova parfs)
 
 default_fs=(pmfs nova winefs odinfs parfs)
 
-parfs_branch=(idel nvodin)
+parfs_branch=(idel nvodin parfs-no-opt-append parfs-no-meta-sep)
 
 if [ -z "$arg_fs" ]; then
     echo "compile all fs"

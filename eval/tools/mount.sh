@@ -23,8 +23,14 @@ echo 3 | sudo tee /proc/sys/vm/drop_caches
 mount_fs=$1
 del_thrds=$2
 
+parfs_branch=(idel nvodin parfs-no-opt-append parfs-no-meta-sep)
+
 if [[ "$mount_fs" == "cknova" ]]; then
     mount_fs=nova
+fi
+
+if [[ " ${parfs_branch[@]} " =~ " ${mount_fs} " ]]; then
+    mount_fs=parfs
 fi
 
 # if del_thrds is not null, pass it to the mount script
