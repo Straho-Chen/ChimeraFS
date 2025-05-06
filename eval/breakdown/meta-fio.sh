@@ -9,9 +9,9 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-FS=("nova" "cknova" "parfs" "nvodin")
+FS=("pmfs" "nova" "cknova" "nvodin" "idel")
 
-DELEGATION_FS=("parfs" "nvodin")
+DELEGATION_FS=("nvodin" "idel")
 
 del_thrds=(12)
 
@@ -22,17 +22,20 @@ TOTAL_FILE_SIZE=$((32 * 1024))
 BLK_SIZES=($((4 * 1024)))
 NUM_JOBS=(32)
 
+TABLE_NAME_PMFS="$ABS_PATH/performance-comparison-table-pmfs"
+table_create "$TABLE_NAME_PMFS" "workloads total_time(ns) meta(ns) data(ns)"
+
 TABLE_NAME_NOVA="$ABS_PATH/performance-comparison-table-nova"
 table_create "$TABLE_NAME_NOVA" "workloads total_time(ns) meta(ns) data(ns)"
 
 TABLE_NAME_CKNOVA="$ABS_PATH/performance-comparison-table-cknova"
 table_create "$TABLE_NAME_CKNOVA" "workloads total_time(ns) meta(ns) data(ns)"
 
-TABLE_NAME_PARFS="$ABS_PATH/performance-comparison-table-parfs"
-table_create "$TABLE_NAME_PARFS" "workloads total_time(ns) meta(ns) data(ns)"
-
 TABLE_NAME_NVODIN="$ABS_PATH/performance-comparison-table-nvodin"
 table_create "$TABLE_NAME_NVODIN" "workloads total_time(ns) meta(ns) data(ns)"
+
+TABLE_NAME_IDEL="$ABS_PATH/performance-comparison-table-idel"
+table_create "$TABLE_NAME_IDEL" "workloads total_time(ns) meta(ns) data(ns)"
 
 fpath="/mnt/pmem0/"
 
@@ -80,11 +83,7 @@ for fs in "${FS[@]}"; do
 
                 dmesg -C
 
-                if [[ "${fs}" == "nova" ]]; then
-                    do_fio "$fs" "$workload" "$fsize" "$bsz" "$job"
-                else
-                    do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
-                fi
+                do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
 
                 mkdir -p "$ABS_PATH"/M_DATA/fio/${workload}
                 dmesg -c >"$ABS_PATH"/M_DATA/fio/${workload}/${fs}
@@ -99,10 +98,12 @@ for fs in "${FS[@]}"; do
                     table_add_row "$TABLE_NAME_NOVA" "$workload $total_time $meta_time $data_time"
                 elif [[ "${fs}" == "cknova" ]]; then
                     table_add_row "$TABLE_NAME_CKNOVA" "$workload $total_time $meta_time $data_time"
-                elif [[ "${fs}" == "parfs" ]]; then
-                    table_add_row "$TABLE_NAME_PARFS" "$workload $total_time $meta_time $data_time"
+                elif [[ "${fs}" == "pmfs" ]]; then
+                    table_add_row "$TABLE_NAME_PMFS" "$workload $total_time $meta_time $data_time"
                 elif [[ "${fs}" == "nvodin" ]]; then
                     table_add_row "$TABLE_NAME_NVODIN" "$workload $total_time $meta_time $data_time"
+                elif [[ "${fs}" == "idel" ]]; then
+                    table_add_row "$TABLE_NAME_IDEL" "$workload $total_time $meta_time $data_time"
                 else
                     echo "fs: ${fs}"
                 fi

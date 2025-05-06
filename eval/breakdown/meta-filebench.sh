@@ -14,9 +14,9 @@ TOOLS_PATH=$ABS_PATH/../tools
 FSCRIPT_PRE_FIX=$TOOLS_PATH/fbscripts
 FB_PATH=$ABS_PATH/../benchmark/bin/filebench/bin
 
-FS=("nova" "cknova" "parfs" "nvodin")
+FS=("pmfs" "nova" "cknova" "nvodin" "idel")
 
-DELEGATION_FS=("parfs" "nvodin")
+DELEGATION_FS=("nvodin" "idel")
 
 del_thrds=(12)
 
@@ -24,13 +24,15 @@ FILE_BENCHES=("fileserver.f" "varmail.f" "webserver.f" "webproxy.f")
 
 THREADS=(32)
 
+TABLE_NAME_PMFS="$ABS_PATH/performance-comparison-table-pmfs"
+
 TABLE_NAME_NOVA="$ABS_PATH/performance-comparison-table-nova"
 
 TABLE_NAME_CKNOVA="$ABS_PATH/performance-comparison-table-cknova"
 
-TABLE_NAME_PARFS="$ABS_PATH/performance-comparison-table-parfs"
-
 TABLE_NAME_NVODIN="$ABS_PATH/performance-comparison-table-nvodin"
+
+TABLE_NAME_IDEL="$ABS_PATH/performance-comparison-table-idel"
 
 fpath="/mnt/pmem0/"
 
@@ -76,11 +78,7 @@ for fs in "${FS[@]}"; do
 
             dmesg -C
 
-            if [[ "${fs}" == "nova" ]]; then
-                do_fb "$fs" "$workload" "$thrd"
-            else
-                do_fb "$fs" "$workload" "$thrd" "$del_thrds"
-            fi
+            do_fb "$fs" "$workload" "$thrd" "$del_thrds"
 
             mkdir -p "$ABS_PATH"/M_DATA/filebench/${workload}
             dmesg -c >"$ABS_PATH"/M_DATA/filebench/${workload}/${fs}
@@ -95,10 +93,12 @@ for fs in "${FS[@]}"; do
                 table_add_row "$TABLE_NAME_NOVA" "$workload $total_time $meta_time $data_time"
             elif [[ "${fs}" == "cknova" ]]; then
                 table_add_row "$TABLE_NAME_CKNOVA" "$workload $total_time $meta_time $data_time"
-            elif [[ "${fs}" == "parfs" ]]; then
-                table_add_row "$TABLE_NAME_PARFS" "$workload $total_time $meta_time $data_time"
+            elif [[ "${fs}" == "pmfs" ]]; then
+                table_add_row "$TABLE_NAME_PMFS" "$workload $total_time $meta_time $data_time"
             elif [[ "${fs}" == "nvodin" ]]; then
                 table_add_row "$TABLE_NAME_NVODIN" "$workload $total_time $meta_time $data_time"
+            elif [[ "${fs}" == "idel" ]]; then
+                table_add_row "$TABLE_NAME_IDEL" "$workload $total_time $meta_time $data_time"
             else
                 echo "fs: ${fs}"
             fi
