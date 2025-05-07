@@ -9,12 +9,10 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs" "idel")
-# FS=("nova")
+# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
 # DELEGATION_FS=("odinfs" "parfs")
-DELEGATION_FS=("parfs")
-# DELEGATION_FS=("odinfs")
+DELEGATION_FS=("idel" "parfs")
 
 # UFS=("madfs")
 
@@ -22,9 +20,8 @@ DELEGATION_FS=("parfs")
 TOTAL_FILE_SIZE=$((32 * 1024))
 
 # NUM_JOBS=(1 2 4 8 16 28 32 48 56)
-# NUM_JOBS=(1 2 4 8 16 28 32)
+NUM_JOBS=(1 2 4 8 16 28 32)
 # NUM_JOBS=(28)
-NUM_JOBS=(1)
 
 # in B
 BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
@@ -91,15 +88,10 @@ for fs in "${FS[@]}"; do
             fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
             for ((i = 1; i <= loop; i++)); do
 
-                if [[ "$fs" == "idel" ]]; then
-                    # only test append for idel
-                    do_fio "$fs" "write" "$fsize" "$bsz" "$job"
-                else
-                    do_fio "$fs" "write" "$fsize" "$bsz" "$job"
-                    do_fio "$fs" "read" "$fsize" "$bsz" "$job"
-                    do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
-                    do_fio "$fs" "randread" "$fsize" "$bsz" "$job"
-                fi
+                do_fio "$fs" "write" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "read" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "randread" "$fsize" "$bsz" "$job"
 
             done
         done
@@ -116,10 +108,15 @@ for fs in "${DELEGATION_FS[@]}"; do
                 fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
                 for ((i = 1; i <= loop; i++)); do
 
-                    do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
-                    do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds"
-                    do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
-                    do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds"
+                    if [[ "$fs" == "idel" ]]; then
+                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
+                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
+                    else
+                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
+                        do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds"
+                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
+                        do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds"
+                    fi
 
                 done
             done
