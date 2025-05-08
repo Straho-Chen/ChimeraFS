@@ -1,0 +1,9 @@
+fs workload recovery_time(ns)
+all_scan_recovery fio 4674007818
+latest_trans_scan_recovery fio 537492694
+ckpt fio 537225927
+no_scan fio 503990520
+all_scan_recovery filebench 576994549
+latest_trans_scan_recovery filebench 479170205
+ckpt filebench 460550209
+no_scan filebench 451535945
