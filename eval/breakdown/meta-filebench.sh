@@ -14,14 +14,16 @@ TOOLS_PATH=$ABS_PATH/../tools
 FSCRIPT_PRE_FIX=$TOOLS_PATH/fbscripts
 FB_PATH=$ABS_PATH/../benchmark/bin/filebench/bin
 
-# FS=("pmfs" "nova" "cknova" "nvodin" "idel" "parfs")
-FS=("parfs" "idel")
+FS=("pmfs" "nova" "cknova" "nvodin" "idel" "parfs")
+# FS=("parfs" "idel")
+# FS=("pmfs")
 
 DELEGATION_FS=("nvodin" "idel" "parfs")
 
 del_thrds=(12)
 
 FILE_BENCHES=("fileserver.f" "varmail.f" "webserver.f" "webproxy.f")
+# FILE_BENCHES=("webproxy.f")
 
 THREADS=(32)
 
@@ -83,16 +85,25 @@ for fs in "${FS[@]}"; do
 
             do_fb "$fs" "$workload" "$thrd" "$del_thrds"
 
+            # if $fs fall in delegation fs
+            if [[ "${DELEGATION_FS[@]}" =~ "$fs" ]]; then
+                iops=$(filebench_attr_iops "$ABS_PATH"/DATA/"$workload"/"$fs-$del_thrds"-"$thrd")
+            else
+                iops=$(filebench_attr_iops "$ABS_PATH"/DATA/"$workload"/"$fs"-"$thrd")
+            fi
+
+            echo "iops: $iops"
+
             mkdir -p "$ABS_PATH"/M_DATA/filebench/${workload}
             dmesg -c >"$ABS_PATH"/M_DATA/filebench/${workload}/${fs}
 
             sleep 1
 
-            total_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_total")
-            meta_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_meta")
-            data_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_data")
-            data_csum_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_data_csum")
-            comu_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_comu")
+            total_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_total") / $iops" | bc)
+            meta_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_meta") / $iops" | bc)
+            data_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_data") / $iops" | bc)
+            data_csum_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_data_csum") / $iops" | bc)
+            comu_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_comu") / $iops" | bc)
 
             if [[ "${fs}" == "nova" ]]; then
                 table_add_row "$TABLE_NAME_NOVA" "$workload $total_time $meta_time $data_time"
