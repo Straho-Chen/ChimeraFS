@@ -14,11 +14,11 @@ TOOLS_PATH=$ABS_PATH/../tools
 FSCRIPT_PRE_FIX=$TOOLS_PATH/fbscripts
 FB_PATH=$ABS_PATH/../benchmark/bin/filebench/bin
 
-FS=("pmfs" "nova" "cknova" "nvodin" "idel" "parfs")
+# FS=("pmfs" "nova" "cknova" "nvodin" "idel" "parfs")
 # FS=("parfs" "idel")
-# FS=("pmfs")
+FS=("nvodin" "nvodin-kubuf")
 
-DELEGATION_FS=("nvodin" "idel" "parfs")
+DELEGATION_FS=("nvodin" "nvodin-kubuf" "idel" "parfs")
 
 del_thrds=(12)
 
@@ -34,6 +34,8 @@ TABLE_NAME_NOVA="$ABS_PATH/performance-comparison-table-nova"
 TABLE_NAME_CKNOVA="$ABS_PATH/performance-comparison-table-cknova"
 
 TABLE_NAME_NVODIN="$ABS_PATH/performance-comparison-table-nvodin"
+
+TABLE_NAME_NVODIN_KUBUF="$ABS_PATH/performance-comparison-table-nvodin-kubuf"
 
 TABLE_NAME_IDEL="$ABS_PATH/performance-comparison-table-idel"
 
@@ -113,6 +115,8 @@ for fs in "${FS[@]}"; do
                 table_add_row "$TABLE_NAME_PMFS" "$workload $total_time $meta_time $data_time"
             elif [[ "${fs}" == "nvodin" ]]; then
                 table_add_row "$TABLE_NAME_NVODIN" "$workload $total_time $meta_time $data_time"
+            elif [[ "${fs}" == "nvodin-kubuf" ]]; then
+                table_add_row "$TABLE_NAME_NVODIN_KUBUF" "$workload $total_time $meta_time $data_time"
             elif [[ "${fs}" == "idel" ]]; then
                 table_add_row "$TABLE_NAME_IDEL" "$workload $total_time $meta_time $data_time $data_csum_time $comu_time"
             elif [[ "${fs}" == "parfs" ]]; then
