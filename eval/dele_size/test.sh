@@ -9,11 +9,9 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-FS=("nova")
+FS=("append_csum_whole_block" "append_csum_partial_block" "append_no_csum")
 
-# DELEGATION_FS=("append_csum_whole_block" "append_csum_partial_block" "append_no_csum")
-
-# DELEGATION_FS=("append_no_csum")
+DELEGATION_FS=("append_csum_whole_block" "append_csum_partial_block" "append_no_csum" "parfs")
 
 # in MB
 TOTAL_FILE_SIZE=$((32 * 1024))
@@ -24,7 +22,8 @@ NUM_JOBS=(32)
 BLK_SIZES=($((256)) $((512)) $((1024)) $((2048)) $((4096)) $((8192)) $((16384)))
 
 # in B
-WRITE_DELE_SIZE=($((256)) $((512)) $((1024)) $((2048)) $((4096)))
+# WRITE_DELE_SIZE=($((256)) $((512)) $((1024)) $((2048)) $((4096)) $((32768)))
+WRITE_DELE_SIZE=($((32768)))
 
 DEL_THRDS=(12)
 
@@ -32,7 +31,7 @@ TABLE_NAME="$ABS_PATH/performance-comparison-table"
 
 table_create "$TABLE_NAME" "fs ops filesz blksz numjobs bandwidth(MiB/s)"
 
-loop=5
+loop=3
 if [ "$1" ]; then
     loop=$1
 fi
@@ -74,21 +73,8 @@ do_fio() {
     fs=$fs_raw
 }
 
-for fs in "${FS[@]}"; do
-    compile_fs "$fs" "0"
-    for bsz in "${BLK_SIZES[@]}"; do
-        for job in "${NUM_JOBS[@]}"; do
-            fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
-
-            do_fio "$fs" "write" "$fsize" "$bsz" "$job"
-            do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
-
-        done
-    done
-done
-
 for ((i = 1; i <= loop; i++)); do
-    for fs in "${DELEGATION_FS[@]}"; do
+    for fs in "${FS[@]}"; do
         compile_fs "$fs" "0"
         for del_thrds in "${DEL_THRDS[@]}"; do
             for write_dele_size in "${WRITE_DELE_SIZE[@]}"; do
