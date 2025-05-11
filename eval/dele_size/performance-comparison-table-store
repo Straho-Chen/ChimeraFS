@@ -699,3 +699,17 @@ parfs-12-4096 randwrite 1024 2048 32 3182
 parfs-12-4096 randwrite 1024 4096 32 8747
 parfs-12-4096 randwrite 1024 8192 32 10547.2
 parfs-12-4096 randwrite 1024 16384 32 11161.6
+nova write 1024 256 32 235
+nova randwrite 1024 256 32 200
+nova write 1024 512 32 468
+nova randwrite 1024 512 32 402
+nova write 1024 1024 32 765
+nova randwrite 1024 1024 32 796
+nova write 1024 2048 32 1100
+nova randwrite 1024 2048 32 1637
+nova write 1024 4096 32 4726
+nova randwrite 1024 4096 32 4751
+nova write 1024 8192 32 4477
+nova randwrite 1024 8192 32 4500
+nova write 1024 16384 32 4070
+nova randwrite 1024 16384 32 4219

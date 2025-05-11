@@ -9,9 +9,9 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("nova")
+FS=("nova")
 
-DELEGATION_FS=("append_csum_whole_block" "append_csum_partial_block" "append_no_csum")
+# DELEGATION_FS=("append_csum_whole_block" "append_csum_partial_block" "append_no_csum")
 
 # DELEGATION_FS=("append_no_csum")
 
@@ -73,6 +73,19 @@ do_fio() {
     table_add_row "$TABLE_NAME" "$fs $op $fsize $bsz $job $BW"
     fs=$fs_raw
 }
+
+for fs in "${FS[@]}"; do
+    compile_fs "$fs" "0"
+    for bsz in "${BLK_SIZES[@]}"; do
+        for job in "${NUM_JOBS[@]}"; do
+            fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
+
+            do_fio "$fs" "write" "$fsize" "$bsz" "$job"
+            do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
+
+        done
+    done
+done
 
 for ((i = 1; i <= loop; i++)); do
     for fs in "${DELEGATION_FS[@]}"; do
