@@ -12,13 +12,12 @@ TOOLS_PATH=$ABS_PATH/../tools
 # FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 FS=("nova")
 
-# DELEGATION_FS=("parfs" "odinfs" "idel")
+# DELEGATION_FS=("parfs" "odinfs")
 DELEGATION_FS=("parfs")
 
 # UFS=("madfs")
 
 # in MB
-# TOTAL_FILE_SIZE=$((32 * 1024))
 TOTAL_FILE_SIZE=$((1 * 1024))
 
 NUM_JOBS=(1)
@@ -95,10 +94,10 @@ for fs in "${FS[@]}"; do
             fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
             for ((i = 1; i <= loop; i++)); do
 
-                do_fio "$fs" "write" "$fsize" "$bsz" "$job"
-                do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
-                do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job"
-                do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job"
+                # do_fio "$fs" "write" "$fsize" "$bsz" "$job"
+                # do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
+                # do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job"
+                # do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job"
                 do_fio "$fs" "read" "$fsize" "$bsz" "$job"
                 do_fio "$fs" "randread" "$fsize" "$bsz" "$job"
 
@@ -116,21 +115,15 @@ for fs in "${DELEGATION_FS[@]}"; do
                 fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
                 for ((i = 1; i <= loop; i++)); do
 
-                    if [[ "$fs" == "idel" ]]; then
-                        compile_fs "idel-low-thread" "0"
-                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                    elif [[ "$fs" == "parfs" ]]; then
-                        compile_fs "low-thread" "0"
-                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                    if [[ "$fs" == "parfs" ]]; then
+                        # compile_fs "low-thread" "0"
+                        # do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        # do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        # do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        # do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                         compile_fs "$fs" "0"
-                        do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds"
+                        do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                     else
                         compile_fs "$fs" "0"
                         do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
