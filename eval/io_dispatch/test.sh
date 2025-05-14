@@ -11,8 +11,8 @@ TOOLS_PATH=$ABS_PATH/../tools
 
 # FS=("nova")
 
-# DELEGATION_FS=("parfs-single-pm" "parfs")
-DELEGATION_FS=("parfs")
+DELEGATION_FS=("parfs-single-pm" "parfs")
+# DELEGATION_FS=("parfs")
 
 # in MB
 TOTAL_FILE_SIZE=$((32 * 1024))
@@ -84,15 +84,19 @@ for fs in "${FS[@]}"; do
     done
 done
 
-for fs in "${DELEGATION_FS[@]}"; do
-    if [[ "$fs" == "parfs-single-pm" ]]; then
-        compile_fs "parfs" "0"
-    else
-        compile_fs "$fs" "0"
-    fi
-    for del_thrds in "${DEL_THRDS[@]}"; do
-        for bsz in "${BLK_SIZES[@]}"; do
-            for job in "${NUM_JOBS[@]}"; do
+for job in "${NUM_JOBS[@]}"; do
+    for bsz in "${BLK_SIZES[@]}"; do
+        for fs in "${DELEGATION_FS[@]}"; do
+            if [[ "$job" -le 2 ]]; then
+                if [[ "$fs" == "parfs" ]] || [[ "$fs" == "parfs-single-pm" ]]; then
+                    compile_fs "low-thread" "0"
+                else
+                    compile_fs "parfs" "0"
+                fi
+            else
+                compile_fs "$fs" "0"
+            fi
+            for del_thrds in "${DEL_THRDS[@]}"; do
                 fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
                 for ((i = 1; i <= loop; i++)); do
 

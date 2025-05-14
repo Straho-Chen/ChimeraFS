@@ -16,8 +16,8 @@ workload_dir=$ABS_PATH/workloads
 # FS=("nova")
 
 # DELEGATION_FS=("odinfs" "parfs")
-DELEGATION_FS=("parfs-single-pm")
-# DELEGATION_FS=("odinfs")
+# DELEGATION_FS=("parfs-single-pm")
+DELEGATION_FS=("parfs")
 
 # UFS=("madfs")
 

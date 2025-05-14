@@ -1,6 +1,7 @@
 #!/usr/bin/bash
 
 del_thrds=$1
+write_dele_size=$2
 
 if [ -z "$del_thrds" ]; then
     echo "Usage: $0 <dele_thrds>"
@@ -28,5 +29,9 @@ cd $pmem_probe_dir && python3 gen_config.py 2
 
 sudo parradm create /dev/parfs_pmem_ar0 $pmem_probe_file
 
-sudo mount -t parfs -o init,dele_thrds=$del_thrds,data_cow /dev/parfs_pmem_ar0 /mnt/pmem0/
+if [[ -z "$write_dele_size" ]]; then
+    sudo mount -t parfs -o init,dele_thrds=$del_thrds,data_cow /dev/parfs_pmem_ar0 /mnt/pmem0/
+else
+    sudo mount -t parfs -o init,dele_thrds=$del_thrds,write_dele_size=$write_dele_size,data_cow /dev/parfs_pmem_ar0 /mnt/pmem0/
+fi
 sudo chown $USER /mnt/pmem0/

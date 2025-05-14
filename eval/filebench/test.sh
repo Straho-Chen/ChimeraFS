@@ -14,16 +14,16 @@ FSCRIPT_PRE_FIX=$TOOLS_PATH/fbscripts
 FB_PATH=$ABS_PATH/../benchmark/bin/filebench/bin
 
 # FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
-FS=("nova")
+# FS=("nova")
 
 # DELEGATION_FS=("odinfs" "parfs")
 DELEGATION_FS=("parfs")
 
 FILE_BENCHES=("fileserver.f" "varmail.f" "webserver.f" "webproxy.f")
-# FILE_BENCHES=("varmail.f")
+# FILE_BENCHES=("webproxy.f")
 
 THREADS=(1 2 4 8 16 28 32)
-# THREADS=(4)
+# THREADS=(32)
 
 # DEL_THRDS=(1 2 4 8 12)
 DEL_THRDS=(12)
@@ -65,6 +65,7 @@ do_fb() {
     sed -i "$sed_cmd" "$ABS_PATH"/DATA/"$fbench"/"$thread"
 
     "$FB_PATH"/filebench -f "$ABS_PATH"/DATA/"$fbench"/"$thread" | tee "$ABS_PATH"/DATA/"$fbench"/"$fs"-"$thread"
+    # strace -f "$FB_PATH"/filebench -f "$ABS_PATH"/DATA/"$fbench"/"$thread"> "$ABS_PATH"/DATA/"$fbench"/"$fs"-"$thread" 2>&1
 
     iops=$(filebench_attr_iops "$ABS_PATH"/DATA/"$fbench"/"$fs"-"$thread")
     # Retreive the breakdown

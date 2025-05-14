@@ -15,17 +15,24 @@ FSCRIPT_PRE_FIX=$TOOLS_PATH/fbscripts
 FB_PATH=$ABS_PATH/../benchmark/bin/filebench/bin
 
 # FS=("pmfs" "nova" "cknova" "nvodin" "idel" "parfs")
-# FS=("parfs" "idel")
-FS=("nvodin" "nvodin-kubuf")
+FS=("parfs" "idel")
+# FS=("parfs")
+# FS=("nvodin" "idel" "parfs")
 
 DELEGATION_FS=("nvodin" "nvodin-kubuf" "idel" "parfs")
 
 del_thrds=(12)
 
 FILE_BENCHES=("fileserver.f" "varmail.f" "webserver.f" "webproxy.f")
-# FILE_BENCHES=("webproxy.f")
+# FILE_BENCHES=("webserver.f")
 
 THREADS=(32)
+
+# TABLE_NAME_IDEL="$ABS_PATH/performance-comparison-table-idel"
+# table_create "$TABLE_NAME_IDEL" "workloads total_time(ns) meta(ns) data(ns) data_csum(ns) comu(ns) wait_complete(ns) sync_data(ns)"
+
+# TABLE_NAME_PARFS="$ABS_PATH/performance-comparison-table-parfs"
+# table_create "$TABLE_NAME_PARFS" "workloads total_time(ns) meta(ns) data(ns) data_csum(ns) comu(ns) wait_complete(ns) sync_data(ns)"
 
 TABLE_NAME_PMFS="$ABS_PATH/performance-comparison-table-pmfs"
 
@@ -106,6 +113,8 @@ for fs in "${FS[@]}"; do
             data_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_data") / $iops" | bc)
             data_csum_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_data_csum") / $iops" | bc)
             comu_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_comu") / $iops" | bc)
+            wait_complete_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_complete") / $iops" | bc)
+            sync_data_time=$(echo "scale=4; $(dmesg_attr_time "$ABS_PATH"/M_DATA/filebench/${workload}/${fs} "write_sync_data") / $iops" | bc)
 
             if [[ "${fs}" == "nova" ]]; then
                 table_add_row "$TABLE_NAME_NOVA" "$workload $total_time $meta_time $data_time"
@@ -114,13 +123,14 @@ for fs in "${FS[@]}"; do
             elif [[ "${fs}" == "pmfs" ]]; then
                 table_add_row "$TABLE_NAME_PMFS" "$workload $total_time $meta_time $data_time"
             elif [[ "${fs}" == "nvodin" ]]; then
+                meta_time=$(echo "scale=4; $total_time - $data_time" | bc)
                 table_add_row "$TABLE_NAME_NVODIN" "$workload $total_time $meta_time $data_time"
             elif [[ "${fs}" == "nvodin-kubuf" ]]; then
                 table_add_row "$TABLE_NAME_NVODIN_KUBUF" "$workload $total_time $meta_time $data_time"
             elif [[ "${fs}" == "idel" ]]; then
-                table_add_row "$TABLE_NAME_IDEL" "$workload $total_time $meta_time $data_time $data_csum_time $comu_time"
+                table_add_row "$TABLE_NAME_IDEL" "$workload $total_time $meta_time $data_time $data_csum_time $comu_time $wait_complete_time $sync_data_time"
             elif [[ "${fs}" == "parfs" ]]; then
-                table_add_row "$TABLE_NAME_PARFS" "$workload $total_time $meta_time $data_time $data_csum_time $comu_time"
+                table_add_row "$TABLE_NAME_PARFS" "$workload $total_time $meta_time $data_time $data_csum_time $comu_time $wait_complete_time $sync_data_time"
             else
                 echo "fs: ${fs}"
             fi

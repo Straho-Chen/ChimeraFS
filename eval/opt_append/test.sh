@@ -11,7 +11,7 @@ TOOLS_PATH=$ABS_PATH/../tools
 
 FS=("nova")
 
-# DELEGATION_FS=("parfs" "parfs-no-opt-append")
+DELEGATION_FS=("parfs" "parfs-no-opt-append")
 
 # in MB
 TOTAL_FILE_SIZE=$((32 * 1024))
@@ -27,7 +27,7 @@ TABLE_NAME="$ABS_PATH/performance-comparison-table"
 
 table_create "$TABLE_NAME" "fs ops filesz blksz numjobs bandwidth(MiB/s)"
 
-loop=1
+loop=3
 if [ "$1" ]; then
     loop=$1
 fi

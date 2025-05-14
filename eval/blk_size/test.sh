@@ -94,12 +94,12 @@ for fs in "${FS[@]}"; do
             fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
             for ((i = 1; i <= loop; i++)); do
 
-                # do_fio "$fs" "write" "$fsize" "$bsz" "$job"
-                # do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "write" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
                 # do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job"
                 # do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job"
-                do_fio "$fs" "read" "$fsize" "$bsz" "$job"
-                do_fio "$fs" "randread" "$fsize" "$bsz" "$job"
+                # do_fio "$fs" "read" "$fsize" "$bsz" "$job"
+                # do_fio "$fs" "randread" "$fsize" "$bsz" "$job"
 
             done
         done
@@ -116,14 +116,14 @@ for fs in "${DELEGATION_FS[@]}"; do
                 for ((i = 1; i <= loop; i++)); do
 
                     if [[ "$fs" == "parfs" ]]; then
-                        # compile_fs "low-thread" "0"
-                        # do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        # do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        compile_fs "low-thread" "0"
+                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                         # do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                         # do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        compile_fs "$fs" "0"
-                        do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        # compile_fs "$fs" "0"
+                        # do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        # do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                     else
                         compile_fs "$fs" "0"
                         do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"

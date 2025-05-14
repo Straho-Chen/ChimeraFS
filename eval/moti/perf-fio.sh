@@ -10,10 +10,10 @@ ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
 # FS=("pmfs" "nova" "cknova" "idel" "odinfs")
-FS=("idel")
+FS=("idel" "parfs")
 # FS=("odinfs")
 
-DELEGATION_FS=("nvodin" "nvodin-kubuf" "idel" "odinfs")
+DELEGATION_FS=("nvodin" "nvodin-kubuf" "idel" "odinfs" "parfs")
 
 del_thrds=(12)
 
@@ -21,8 +21,8 @@ WORKLOADS=("write" "randwrite")
 
 TOTAL_FILE_SIZE=$((32 * 1024))
 BLK_SIZES=($((4 * 1024)) $((32 * 1024)))
-# NUM_JOBS=(1 2 4 8 16 28 32)
-NUM_JOBS=(4)
+NUM_JOBS=(1 2 4 8 16 28 32)
+# NUM_JOBS=(4)
 
 TABLE_NAME="$ABS_PATH/performance-comparison-table"
 
@@ -77,6 +77,8 @@ for job in "${NUM_JOBS[@]}"; do
             if [[ "$job" -le 4 ]]; then
                 if [[ "$fs" == "idel" ]]; then
                     compile_fs "idel-low-thread" "0"
+                elif [[ "$fs" == "parfs" ]]; then
+                    compile_fs "low-thread" "0"
                 else
                     compile_fs "$fs" "0"
                 fi
@@ -94,7 +96,9 @@ for job in "${NUM_JOBS[@]}"; do
 
                     if [[ "$job" == 4 ]] && [[ "$bsz" == 32768 ]] && [[ "$fs" == "idel" ]]; then
                         do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
-                    elif [[ "$fs" == "idel" ]]; then
+                    elif [[ "$job" == 4 ]] && [[ "$bsz" == 32768 ]] && [[ "$fs" == "parfs" ]]; then
+                        do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
+                    elif [[ "$fs" == "idel" ]] || [[ "$fs" == "parfs" ]]; then
                         do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                     else
                         do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"

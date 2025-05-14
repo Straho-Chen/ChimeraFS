@@ -11,8 +11,8 @@ TOOLS_PATH=$ABS_PATH/../tools
 
 # FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
-# DELEGATION_FS=("odinfs" "parfs")
-DELEGATION_FS=("idel" "parfs")
+# DELEGATION_FS=("parfs" "odinfs")
+DELEGATION_FS=("parfs")
 
 # UFS=("madfs")
 
@@ -21,7 +21,7 @@ TOTAL_FILE_SIZE=$((32 * 1024))
 
 # NUM_JOBS=(1 2 4 8 16 28 32 48 56)
 NUM_JOBS=(1 2 4 8 16 28 32)
-# NUM_JOBS=(28)
+# NUM_JOBS=(4)
 
 # in B
 BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
@@ -52,6 +52,7 @@ do_fio() {
     local bsz=$4
     local job=$5
     local del_thrds=$6
+    local numa_node=$7
 
     if [[ "$op" == "write" || "$op" == "randwrite" ]]; then
         grep_sign="WRITE:"
@@ -71,7 +72,13 @@ do_fio() {
         bash "$TOOLS_PATH"/mount.sh "$fs"
     fi
 
-    BW=$(bash "$TOOLS_PATH"/fio.sh "$fpath" "$bsz" "$fsize" "$job" "$op" | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
+    cmd=""$TOOLS_PATH"/fio.sh "$fpath" "$bsz" "$fsize" "$job" "$op""
+
+    if [[ "$numa_node" ]]; then
+        BW=$(numactl -N "$numa_node" $cmd | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
+    else
+        BW=$(bash $cmd | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
+    fi
 
     bash "$TOOLS_PATH"/umount.sh "$fs_raw"
 
@@ -100,7 +107,44 @@ done
 
 # for delegation fs
 
+for job in "${NUM_JOBS[@]}"; do
+    for bsz in "${BLK_SIZES[@]}"; do
+        for fs in "${DELEGATION_FS[@]}"; do
+
+            if [[ "$job" -le 4 ]] && [[ "$bsz" -le 16384 ]]; then
+                if [[ "$fs" == "idel" ]]; then
+                    compile_fs "idel-low-thread" "0"
+                elif [[ "$fs" == "parfs" ]]; then
+                    compile_fs "low-thread" "0"
+                else
+                    compile_fs "$fs" "0"
+                fi
+            else
+                compile_fs "$fs" "0"
+            fi
+
+            for del_thrds in "${DEL_THRDS[@]}"; do
+                fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
+                for ((i = 1; i <= loop; i++)); do
+
+                    if [[ "$job" -le 4 ]] && [[ "$fs" == "parfs" ]] && [[ "$bsz" -le 16384 ]]; then
+                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                    else
+                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
+                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
+                    fi
+
+                done
+            done
+        done
+    done
+done
+
 for fs in "${DELEGATION_FS[@]}"; do
+    # if [[ "$fs" == "idel" ]]; then
+    #     continue
+    # fi
     compile_fs "$fs" "0"
     for del_thrds in "${DEL_THRDS[@]}"; do
         for bsz in "${BLK_SIZES[@]}"; do
@@ -108,15 +152,8 @@ for fs in "${DELEGATION_FS[@]}"; do
                 fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
                 for ((i = 1; i <= loop; i++)); do
 
-                    if [[ "$fs" == "idel" ]]; then
-                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
-                    else
-                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds"
-                    fi
+                    do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds"
+                    do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds"
 
                 done
             done

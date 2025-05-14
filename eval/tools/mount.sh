@@ -22,8 +22,9 @@ echo 3 | sudo tee /proc/sys/vm/drop_caches
 
 mount_fs=$1
 del_thrds=$2
+write_dele_size=$3
 
-parfs_branch=(idel nvodin parfs-no-opt-append parfs-no-meta-sep)
+parfs_branch=(idel nvodin parfs-no-opt-append append_csum_whole_block append_csum_partial_block append_no_csum all_scan_recovery latest_trans_scan_recovery ckpt no_scan nvodin-kubuf)
 
 if [[ "$mount_fs" == "cknova" ]]; then
     mount_fs=nova
@@ -37,5 +38,5 @@ fi
 if [ -z "$del_thrds" ]; then
     $MOUNT_SCRIPT_PATH/mount-$mount_fs.sh
 else
-    $MOUNT_SCRIPT_PATH/mount-$mount_fs.sh $del_thrds
+    $MOUNT_SCRIPT_PATH/mount-$mount_fs.sh $del_thrds $write_dele_size
 fi

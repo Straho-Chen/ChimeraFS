@@ -17,6 +17,7 @@ BS=$2   # in B
 SIZE=$3 # in MB
 THREADS=$4
 MODE=$5
+OVERWRITE=$6
 
 # create new tmp file for fio config
 fio_config=$(mktemp)
@@ -29,6 +30,11 @@ echo "ioengine=sync" >>$fio_config
 
 echo "[tmp]" >>$fio_config
 echo "new_group" >>$fio_config
+
+if [[ "$OVERWRITE" == 1 ]]; then
+    echo "overwrite=1" >>$fio_config
+fi
+
 echo "bs=$BS" >>$fio_config
 echo "size=${SIZE}M" >>$fio_config
 echo "numjobs=$THREADS" >>$fio_config

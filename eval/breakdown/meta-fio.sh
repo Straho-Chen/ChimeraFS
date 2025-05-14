@@ -11,9 +11,11 @@ TOOLS_PATH=$ABS_PATH/../tools
 
 # FS=("pmfs" "nova" "cknova" "nvodin" "idel" "parfs")
 # FS=("parfs" "idel")
-FS=("nvodin" "nvodin-kubuf")
+# FS=("nvodin" "nvodin-kubuf")
+FS=("idel" "parfs")
+# FS=("odinfs")
 
-DELEGATION_FS=("nvodin" "nvodin-kubuf" "idel" "parfs")
+DELEGATION_FS=("nvodin" "nvodin-kubuf" "idel" "parfs" "odinfs")
 
 del_thrds=(12)
 
@@ -33,17 +35,20 @@ NUM_JOBS=(32)
 # TABLE_NAME_CKNOVA="$ABS_PATH/performance-comparison-table-cknova"
 # table_create "$TABLE_NAME_CKNOVA" "workloads total_time(ns) meta(ns) data(ns)"
 
-TABLE_NAME_NVODIN="$ABS_PATH/performance-comparison-table-nvodin"
-table_create "$TABLE_NAME_NVODIN" "workloads total_time(ns) meta(ns) data(ns)"
+# TABLE_NAME_NVODIN="$ABS_PATH/performance-comparison-table-nvodin"
+# table_create "$TABLE_NAME_NVODIN" "workloads total_time(ns) meta(ns) data(ns)"
 
-TABLE_NAME_NVODIN_KUBUF="$ABS_PATH/performance-comparison-table-nvodin-kubuf"
-table_create "$TABLE_NAME_NVODIN_KUBUF" "workloads total_time(ns) meta(ns) data(ns)"
+# TABLE_NAME_NVODIN_KUBUF="$ABS_PATH/performance-comparison-table-nvodin-kubuf"
+# table_create "$TABLE_NAME_NVODIN_KUBUF" "workloads total_time(ns) meta(ns) data(ns)"
 
-# TABLE_NAME_IDEL="$ABS_PATH/performance-comparison-table-idel"
-# table_create "$TABLE_NAME_IDEL" "workloads total_time(ns) meta(ns) data(ns) data_csum(ns) comu(ns)"
+TABLE_NAME_IDEL="$ABS_PATH/performance-comparison-table-idel"
+table_create "$TABLE_NAME_IDEL" "workloads total_time(ns) meta(ns) data(ns) data_csum(ns) comu(ns) wait_complete(ns) sync_data(ns)"
 
-# TABLE_NAME_PARFS="$ABS_PATH/performance-comparison-table-parfs"
-# table_create "$TABLE_NAME_PARFS" "workloads total_time(ns) meta(ns) data(ns) data_csum(ns) comu(ns)"
+TABLE_NAME_PARFS="$ABS_PATH/performance-comparison-table-parfs"
+table_create "$TABLE_NAME_PARFS" "workloads total_time(ns) meta(ns) data(ns) data_csum(ns) comu(ns) wait_complete(ns) sync_data(ns)"
+
+# TABLE_NAME_ODINFS="$ABS_PATH/performance-comparison-table-odinfs"
+# table_create "$TABLE_NAME_ODINFS" "workloads total_time(ns) meta(ns) data(ns)"
 
 fpath="/mnt/pmem0/"
 
@@ -103,6 +108,8 @@ for fs in "${FS[@]}"; do
                 data_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/fio/${workload}/${fs} "write_data")
                 data_csum_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/fio/${workload}/${fs} "write_data_csum")
                 comu_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/fio/${workload}/${fs} "write_comu")
+                wait_complete_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/fio/${workload}/${fs} "write_complete")
+                sync_data_time=$(dmesg_attr_time "$ABS_PATH"/M_DATA/fio/${workload}/${fs} "write_sync_data")
 
                 if [[ "${fs}" == "nova" ]]; then
                     table_add_row "$TABLE_NAME_NOVA" "$workload $total_time $meta_time $data_time"
@@ -111,13 +118,16 @@ for fs in "${FS[@]}"; do
                 elif [[ "${fs}" == "pmfs" ]]; then
                     table_add_row "$TABLE_NAME_PMFS" "$workload $total_time $meta_time $data_time"
                 elif [[ "${fs}" == "nvodin" ]]; then
+                    meta_time=$(echo "scale=4; $total_time - $data_time" | bc)
                     table_add_row "$TABLE_NAME_NVODIN" "$workload $total_time $meta_time $data_time"
                 elif [[ "${fs}" == "nvodin-kubuf" ]]; then
                     table_add_row "$TABLE_NAME_NVODIN_KUBUF" "$workload $total_time $meta_time $data_time"
                 elif [[ "${fs}" == "idel" ]]; then
-                    table_add_row "$TABLE_NAME_IDEL" "$workload $total_time $meta_time $data_time $data_csum_time $comu_time"
+                    table_add_row "$TABLE_NAME_IDEL" "$workload $total_time $meta_time $data_time $data_csum_time $comu_time $wait_complete_time $sync_data_time"
                 elif [[ "${fs}" == "parfs" ]]; then
-                    table_add_row "$TABLE_NAME_PARFS" "$workload $total_time $meta_time $data_time $data_csum_time $comu_time"
+                    table_add_row "$TABLE_NAME_PARFS" "$workload $total_time $meta_time $data_time $data_csum_time $comu_time $wait_complete_time $sync_data_time"
+                elif [[ "${fs}" == "odinfs" ]]; then
+                    table_add_row "$TABLE_NAME_ODINFS" "$workload $total_time $meta_time $data_time"
                 else
                     echo "fs: ${fs}"
                 fi

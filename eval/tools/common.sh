@@ -69,8 +69,14 @@ function dmesg_attr_time() {
 function compile_fs() {
     local fs=$1
     local bd=$2
+    local debug=$3
     ABS_PATH=$(where_is_script "$0")
     FS_DIR=$ABS_PATH/../../fs
+    if [[ "$fs" == "parfs-single-pm" ]]; then
+        fs="parfs"
+    elif [[ "$fs" == "odinfs-single-pm" ]]; then
+        fs="odinfs"
+    fi
     dir_change() (
         cd "$FS_DIR" || exit
         if [[ "$fs" == "madfs" ]]; then
@@ -78,7 +84,7 @@ function compile_fs() {
             make BUILD_TARGETS="madfs"
             cd "$FS_DIR" || exit
         else
-            bash compile.sh "$fs" "$bd"
+            bash compile.sh "$fs" "$bd" "$debug"
         fi
     )
     dir_change

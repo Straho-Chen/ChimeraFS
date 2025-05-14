@@ -29,6 +29,12 @@ function checkout_branch() (
 arg_fs=$1
 arg_bd=$2
 
+arg_debug=$3
+
+if [ -z "$arg_debug" ]; then
+    arg_debug=0
+fi
+
 timing=0
 data_checksum=0
 mcsum=0
@@ -37,7 +43,7 @@ chsm_fs=(nova parfs)
 
 default_fs=(pmfs nova winefs odinfs parfs)
 
-parfs_branch=(idel nvodin parfs-no-opt-append parfs-no-meta-sep)
+parfs_branch=(idel nvodin parfs-no-opt-append append_csum_whole_block append_csum_partial_block append_no_csum all_scan_recovery latest_trans_scan_recovery ckpt no_scan nvodin-kubuf low-thread idel-low-thread)
 
 if [ -z "$arg_fs" ]; then
     echo "compile all fs"
@@ -66,6 +72,8 @@ if [[ "$arg_fs" == "cknova" ]]; then
     fs=(nova)
 elif [[ " ${parfs_branch[@]} " =~ " ${arg_fs} " ]]; then
     data_checksum=1
+elif [[ "$arg_fs" == "parfs" ]]; then
+    data_checksum=1
 fi
 
 if [[ " ${parfs_branch[@]} " =~ " ${arg_fs} " ]]; then
@@ -77,16 +85,18 @@ fi
 # Work around, will fix
 sudo rm -rf /dev/*pmem_ar*
 
+for i in ${default_fs[@]}; do
+    sudo rmmod $i
+done
+
 for i in ${fs[@]}; do
     cd $i
     make clean && make -j
-    sudo rmmod $i
     # if fs fall in chsm_fs, then enable checksum
     if [[ " ${chsm_fs[@]} " =~ " ${i} " ]]; then
-        sudo insmod build/$i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum mcsum=$mcsum
-        sudo insmod $i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum mcsum=$mcsum
+        sudo insmod build/$i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum nova_dbgmask=$arg_debug mcsum=$mcsum
+        sudo insmod $i.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum nova_dbgmask=$arg_debug mcsum=$mcsum
     elif [[ " ${parfs_branch[@]} " =~ " ${i} " ]]; then
-        sudo rmmod parfs
         sudo insmod build/parfs.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum
         sudo insmod parfs.ko measure_timing=$timing measure_meta_timing=$meta_breakdown data_csum=$data_checksum
     else
