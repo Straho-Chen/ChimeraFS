@@ -1,0 +1,110 @@
+#!/usr/bin/bash
+
+set -ex
+
+source "../tools/common.sh"
+
+sudo -v
+
+ABS_PATH=$(where_is_script "$0")
+TOOLS_PATH=$ABS_PATH/../tools
+
+DELEGATION_FS=("parfs")
+
+# in MB
+TOTAL_FILE_SIZE=$((2 * 1024))
+
+# NUM_JOBS=(1 2 4 8 16 28 32 48 56)
+# NUM_JOBS=(1 2 4 8 16 28 32)
+NUM_JOBS=(1)
+
+# in B
+# BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
+BLK_SIZES=($((32 * 1024)))
+# BLK_SIZES=($((8 * 1024)))
+# BLK_SIZES=($((16 * 1024)))
+# BLK_SIZES=($((32 * 1024)))
+
+# DEL_THRDS=(1 2 4 8 12)
+DEL_THRDS=(12)
+# DEL_THRDS=(1)
+
+TABLE_NAME="$ABS_PATH/performance-comparison-table"
+
+table_create "$TABLE_NAME" "fs ops filesz blksz numjobs bandwidth(MiB/s)"
+
+loop=1
+if [ "$1" ]; then
+    loop=$1
+fi
+
+fpath="/mnt/pmem0/"
+
+do_fio() {
+    local fs=$1
+    local op=$2
+    local fsize=$3
+    local bsz=$4
+    local job=$5
+    local del_thrds=$6
+    local numa_node=$7
+
+    if [[ "$op" == "write" || "$op" == "randwrite" ]]; then
+        grep_sign="WRITE:"
+    else
+        grep_sign="READ:"
+    fi
+
+    echo "FIO: $fs $op $fsize $bsz $job" >/dev/kmsg
+
+    fs_raw=$fs
+
+    # if $fs fall in delegation fs
+    if [[ "${DELEGATION_FS[@]}" =~ "$fs" ]]; then
+        bash "$TOOLS_PATH"/mount.sh "$fs" "$del_thrds"
+        fs=$fs-$del_thrds
+    else
+        bash "$TOOLS_PATH"/mount.sh "$fs"
+    fi
+
+    cmd=""$TOOLS_PATH"/fio.sh "$fpath" "$bsz" "$fsize" "$job" "$op""
+
+    if [[ "$numa_node" ]]; then
+        BW=$(numactl -N "$numa_node" $cmd | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
+    else
+        BW=$(bash $cmd | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
+    fi
+
+    bash "$TOOLS_PATH"/umount.sh "$fs_raw"
+
+    table_add_row "$TABLE_NAME" "$fs $op $fsize $bsz $job $BW"
+    fs=$fs_raw
+}
+
+for job in "${NUM_JOBS[@]}"; do
+    for bsz in "${BLK_SIZES[@]}"; do
+        for fs in "${DELEGATION_FS[@]}"; do
+
+            if [[ "$job" -le 4 ]]; then
+                compile_fs "low-thread" "0"
+            else
+                compile_fs "$fs" "0"
+            fi
+
+            for del_thrds in "${DEL_THRDS[@]}"; do
+                fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
+                for ((i = 1; i <= loop; i++)); do
+
+                    if [[ "$job" -le 4 ]]; then
+                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                    else
+                        do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
+                        do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
+                    fi
+
+                done
+            done
+        done
+    done
+done
