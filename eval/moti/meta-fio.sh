@@ -11,7 +11,7 @@ TOOLS_PATH=$ABS_PATH/../tools
 
 FS=("pmfs" "nova" "cknova" "odinfs" "idel")
 
-DELEGATION_FS=("nvodin" "nvodin-kubuf" "idel" "parfs" "odinfs")
+DELEGATION_FS=("idel" "odinfs")
 
 del_thrds=(12)
 

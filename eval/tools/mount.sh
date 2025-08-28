@@ -24,7 +24,7 @@ mount_fs=$1
 del_thrds=$2
 write_dele_size=$3
 
-parfs_branch=(idel nvodin parfs-no-opt-append append_csum_whole_block append_csum_partial_block append_no_csum all_scan_recovery latest_trans_scan_recovery ckpt no_scan nvodin-kubuf)
+parfs_branch=(idel nvodin parfs-no-opt-append append_csum_whole_block append_csum_partial_block append_no_csum all_scan_recovery latest_trans_scan_recovery ckpt no_scan nvodin-kubuf low-thread idel-low-thread optfs)
 
 if [[ "$mount_fs" == "cknova" ]]; then
     mount_fs=nova

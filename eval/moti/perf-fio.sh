@@ -9,11 +9,9 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("pmfs" "nova" "cknova" "idel" "odinfs")
-FS=("idel" "parfs")
-# FS=("odinfs")
+FS=("pmfs" "nova" "cknova" "idel" "odinfs" "optfs")
 
-DELEGATION_FS=("nvodin" "nvodin-kubuf" "idel" "odinfs" "parfs")
+DELEGATION_FS=("idel" "odinfs" "parfs" "optfs")
 
 del_thrds=(12)
 
@@ -24,7 +22,7 @@ BLK_SIZES=($((4 * 1024)) $((32 * 1024)))
 NUM_JOBS=(1 2 4 8 16 28 32)
 # NUM_JOBS=(4)
 
-TABLE_NAME="$ABS_PATH/performance-comparison-table"
+TABLE_NAME="$ABS_PATH/performance-comparison-table-perf"
 
 table_create "$TABLE_NAME" "fs ops filesz blksz numjobs bandwidth(MiB/s)"
 
