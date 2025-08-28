@@ -81,6 +81,7 @@ enum timing_category {
 
 enum timing_category_meta {
 	bd_xip_write_t,
+	bd_meta_t,
 	// bd_agent_copy_w_t,
 
 	// bd_xip_read_t,

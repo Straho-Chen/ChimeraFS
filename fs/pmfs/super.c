@@ -37,11 +37,15 @@
 #include "pmfs.h"
 
 int measure_timing = 0;
+int measure_meta_timing = 0;
 int support_clwb = 0;
 int support_pcommit = 0;
 
 module_param(measure_timing, int, S_IRUGO);
 MODULE_PARM_DESC(measure_timing, "Timing measurement");
+
+module_param(measure_meta_timing, int, S_IRUGO);
+MODULE_PARM_DESC(measure_meta_timing, "Meta timing measurement");
 
 static struct super_operations pmfs_sops;
 static const struct export_operations pmfs_export_ops;
@@ -884,7 +888,7 @@ static void pmfs_put_super(struct super_block *sb)
 		first_pmfs_super = NULL;
 #endif
 
-	if (measure_timing) {
+	if (measure_timing || measure_meta_timing) {
 		pmfs_print_timing_stats();
 		pmfs_clear_stats();
 	}

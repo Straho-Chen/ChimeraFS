@@ -28,7 +28,7 @@ static ssize_t do_xip_mapping_read(struct address_space *mapping,
 	unsigned long offset;
 	loff_t isize, pos;
 	size_t copied = 0, error = 0;
-	ktime_t memcpy_time;
+	INIT_TIMING(memcpy_time);
 
 	pos = *ppos;
 	index = pos >> PAGE_SHIFT;
@@ -130,7 +130,7 @@ ssize_t pmfs_xip_file_read(struct file *filp, char __user *buf, size_t len,
 			   loff_t *ppos)
 {
 	ssize_t res;
-	ktime_t xip_read_time;
+	INIT_TIMING(xip_read_time);
 
 	PMFS_START_TIMING(xip_read_t, xip_read_time);
 	//	rcu_read_lock();
@@ -177,7 +177,9 @@ static ssize_t __pmfs_xip_file_write(struct address_space *mapping,
 	size_t bytes;
 	ssize_t written = 0;
 	struct pmfs_inode *pi;
-	ktime_t memcpy_time, write_time;
+	INIT_TIMING(memcpy_time);
+	INIT_TIMING(write_time);
+	INIT_TIMING(bd_memcpy_time);
 
 	PMFS_START_TIMING(internal_write_t, write_time);
 	pi = pmfs_get_inode(sb, inode->i_ino);
@@ -199,9 +201,11 @@ static ssize_t __pmfs_xip_file_write(struct address_space *mapping,
 			break;
 
 		PMFS_START_TIMING(memcpy_w_t, memcpy_time);
+		PMFS_START_META_TIMING(bd_memcpy_w_t, bd_memcpy_time);
 		pmfs_xip_mem_protect(sb, xmem + offset, bytes, 1);
 		copied = memcpy_to_nvmm((char *)xmem, offset, buf, bytes);
 		pmfs_xip_mem_protect(sb, xmem + offset, bytes, 0);
+		PMFS_END_META_TIMING(bd_memcpy_w_t, bd_memcpy_time);
 		PMFS_END_TIMING(memcpy_w_t, memcpy_time);
 
 		/* if start or end dest address is not 8 byte aligned,
@@ -249,14 +253,17 @@ static ssize_t pmfs_file_write_fast(struct super_block *sb, struct inode *inode,
 {
 	void *xmem = pmfs_get_block(sb, block);
 	size_t copied, ret = 0, offset;
-	ktime_t memcpy_time;
+	INIT_TIMING(memcpy_time);
+	INIT_TIMING(bd_memcpy_time);
 
 	offset = pos & (sb->s_blocksize - 1);
 
 	PMFS_START_TIMING(memcpy_w_t, memcpy_time);
+	PMFS_START_META_TIMING(bd_memcpy_w_t, bd_memcpy_time);
 	pmfs_xip_mem_protect(sb, xmem + offset, count, 1);
 	copied = memcpy_to_nvmm((char *)xmem, offset, buf, count);
 	pmfs_xip_mem_protect(sb, xmem + offset, count, 0);
+	PMFS_END_META_TIMING(bd_memcpy_w_t, bd_memcpy_time);
 	PMFS_END_TIMING(memcpy_w_t, memcpy_time);
 
 	pmfs_flush_edge_cachelines(pos, copied, xmem + offset);
@@ -307,6 +314,7 @@ static inline void pmfs_clear_edge_blk(struct super_block *sb,
 	void *ptr;
 	size_t count;
 	unsigned long blknr;
+	INIT_TIMING(memcpy_time);
 
 	if (new_blk) {
 		blknr = block >>
@@ -319,9 +327,11 @@ static inline void pmfs_clear_edge_blk(struct super_block *sb,
 					(blk_off % 8);
 			} else
 				count = blk_off + (8 - (blk_off % 8));
+			PMFS_START_META_TIMING(bd_memcpy_w_t, memcpy_time);
 			pmfs_memunlock_range(sb, ptr, pmfs_inode_blk_size(pi));
 			memset_nt(ptr, 0, count);
 			pmfs_memlock_range(sb, ptr, pmfs_inode_blk_size(pi));
+			PMFS_END_META_TIMING(bd_memcpy_w_t, memcpy_time);
 		}
 	}
 }
@@ -341,9 +351,12 @@ ssize_t pmfs_xip_file_write(struct file *filp, const char __user *buf,
 	size_t count, offset, eblk_offset, ret;
 	unsigned long start_blk, end_blk, num_blocks, max_logentries;
 	bool same_block;
-	ktime_t xip_write_time, xip_write_fast_time;
+	INIT_TIMING(xip_write_time);
+	INIT_TIMING(xip_write_fast_time);
+	INIT_TIMING(bd_write_time);
 
 	PMFS_START_TIMING(xip_write_t, xip_write_time);
+	PMFS_START_META_TIMING(bd_write_t, bd_write_time);
 
 	sb_start_write(inode->i_sb);
 	inode_lock(inode);
@@ -429,6 +442,7 @@ ssize_t pmfs_xip_file_write(struct file *filp, const char __user *buf,
 out:
 	inode_unlock(inode);
 	sb_end_write(inode->i_sb);
+	PMFS_END_META_TIMING(bd_write_t, bd_write_time);
 	PMFS_END_TIMING(xip_write_t, xip_write_time);
 	return ret;
 }
@@ -489,7 +503,7 @@ static int __pmfs_xip_file_fault(struct vm_area_struct *vma,
 static vm_fault_t pmfs_xip_file_fault(struct vm_fault *vmf)
 {
 	vm_fault_t ret = 0;
-	ktime_t fault_time;
+	INIT_TIMING(fault_time);
 
 	PMFS_START_TIMING(mmap_fault_t, fault_time);
 	rcu_read_lock();

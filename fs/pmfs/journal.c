@@ -33,15 +33,15 @@
 #include "journal.h"
 
 static void dump_transaction(struct pmfs_sb_info *sbi,
-		pmfs_transaction_t *trans)
+			     pmfs_transaction_t *trans)
 {
 	int i;
 	pmfs_logentry_t *le = trans->start_addr;
 
 	for (i = 0; i < trans->num_entries; i++) {
 		pmfs_dbg_trans("ao %llx tid %x gid %x type %x sz %x\n",
-			le->addr_offset, le->transaction_id, le->gen_id,
-			le->type, le->size);
+			       le->addr_offset, le->transaction_id, le->gen_id,
+			       le->type, le->size);
 		le++;
 	}
 }
@@ -82,7 +82,7 @@ static inline uint16_t prev_gen_id(uint16_t gen_id)
 
 /* Undo a valid log entry */
 static inline void pmfs_undo_logentry(struct super_block *sb,
-	pmfs_logentry_t *le)
+				      pmfs_logentry_t *le)
 {
 	char *data;
 
@@ -99,7 +99,7 @@ static inline void pmfs_undo_logentry(struct super_block *sb,
 /* can be called during journal recovery or transaction abort */
 /* We need to Undo in the reverse order */
 static void pmfs_undo_transaction(struct super_block *sb,
-		pmfs_transaction_t *trans)
+				  pmfs_transaction_t *trans)
 {
 	pmfs_logentry_t *le;
 	int i;
@@ -115,7 +115,7 @@ static void pmfs_undo_transaction(struct super_block *sb,
 
 /* can be called by either during log cleaning or during journal recovery */
 static void pmfs_flush_transaction(struct super_block *sb,
-		pmfs_transaction_t *trans)
+				   pmfs_transaction_t *trans)
 {
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	pmfs_logentry_t *le = trans->start_addr;
@@ -124,7 +124,7 @@ static void pmfs_flush_transaction(struct super_block *sb,
 
 	for (i = 0; i < trans->num_used; i++, le++) {
 		if (le->size) {
-			data = pmfs_get_block(sb,le64_to_cpu(le->addr_offset));
+			data = pmfs_get_block(sb, le64_to_cpu(le->addr_offset));
 			if (sbi->redo_log) {
 				pmfs_memunlock_range(sb, data, le->size);
 				memcpy(data, le->data, le->size);
@@ -143,13 +143,13 @@ static inline void invalidate_gen_id(pmfs_logentry_t *le)
 
 /* can be called by either during log cleaning or during journal recovery */
 static void pmfs_invalidate_logentries(struct super_block *sb,
-		pmfs_transaction_t *trans)
+				       pmfs_transaction_t *trans)
 {
 	pmfs_logentry_t *le = trans->start_addr;
 	int i;
 
 	pmfs_memunlock_range(sb, trans->start_addr,
-			trans->num_entries * LOGENTRY_SIZE);
+			     trans->num_entries * LOGENTRY_SIZE);
 	for (i = 0; i < trans->num_entries; i++) {
 		invalidate_gen_id(le);
 		if (le->type == LE_START) {
@@ -159,12 +159,12 @@ static void pmfs_invalidate_logentries(struct super_block *sb,
 		le++;
 	}
 	pmfs_memlock_range(sb, trans->start_addr,
-			trans->num_entries * LOGENTRY_SIZE);
+			   trans->num_entries * LOGENTRY_SIZE);
 }
 
 /* can be called by either during log cleaning or during journal recovery */
 static void pmfs_redo_transaction(struct super_block *sb,
-		pmfs_transaction_t *trans, bool recover)
+				  pmfs_transaction_t *trans, bool recover)
 {
 	pmfs_logentry_t *le = trans->start_addr;
 	int i;
@@ -173,7 +173,7 @@ static void pmfs_redo_transaction(struct super_block *sb,
 
 	for (i = 0; i < trans->num_entries; i++) {
 		if (gen_id == le16_to_cpu(le->gen_id) && le->size > 0) {
-			data = pmfs_get_block(sb,le64_to_cpu(le->addr_offset));
+			data = pmfs_get_block(sb, le64_to_cpu(le->addr_offset));
 			/* flush data if we are called during recovery */
 			if (recover) {
 				pmfs_memunlock_range(sb, data, le->size);
@@ -189,7 +189,7 @@ static void pmfs_redo_transaction(struct super_block *sb,
 /* recover the transaction ending at a valid log entry *le */
 /* called for Undo log and traverses the journal backward */
 static uint32_t pmfs_recover_transaction(struct super_block *sb, uint32_t head,
-		uint32_t tail, pmfs_logentry_t *le)
+					 uint32_t tail, pmfs_logentry_t *le)
 {
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	pmfs_transaction_t trans;
@@ -215,14 +215,14 @@ static uint32_t pmfs_recover_transaction(struct super_block *sb, uint32_t head,
 			}
 		}
 		if (tail == 0 || tail == head)
-		    break;
+			break;
 		/* prev log entry */
 		le--;
 		/* Handle uncommitted transactions */
-		if ((gen_id == le16_to_cpu(le->gen_id))
-			&& (le->type & LE_COMMIT || le->type & LE_ABORT)) {
-			BUG_ON(trans.transaction_id == 
-				le32_to_cpu(le->transaction_id));
+		if ((gen_id == le16_to_cpu(le->gen_id)) &&
+		    (le->type & LE_COMMIT || le->type & LE_ABORT)) {
+			BUG_ON(trans.transaction_id ==
+			       le32_to_cpu(le->transaction_id));
 			le++;
 			break;
 		}
@@ -249,7 +249,8 @@ static uint32_t pmfs_recover_transaction(struct super_block *sb, uint32_t head,
 /* process the transaction starting at a valid log entry *le */
 /* called by the log cleaner and journal recovery */
 static uint32_t pmfs_process_transaction(struct super_block *sb, uint32_t head,
-	uint32_t tail, pmfs_logentry_t *le, bool recover, int *processed)
+					 uint32_t tail, pmfs_logentry_t *le,
+					 bool recover, int *processed)
 {
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	pmfs_transaction_t trans;
@@ -261,7 +262,7 @@ static uint32_t pmfs_process_transaction(struct super_block *sb, uint32_t head,
 	gen_id = le16_to_cpu(le->gen_id);
 	if (!(le->type & LE_START)) {
 		pmfs_dbg("start of trans %x but LE_START not set. gen_id %d\n",
-				le32_to_cpu(le->transaction_id), gen_id);
+			 le32_to_cpu(le->transaction_id), gen_id);
 		return next_log_entry(sbi->jsize, new_head);
 	}
 	memset(&trans, 0, sizeof(trans));
@@ -275,8 +276,8 @@ static uint32_t pmfs_process_transaction(struct super_block *sb, uint32_t head,
 		handled++;
 
 		/* Handle committed/aborted transactions */
-		if ((gen_id == le16_to_cpu(le->gen_id)) && (le->type & LE_COMMIT
-					|| le->type & LE_ABORT)) {
+		if ((gen_id == le16_to_cpu(le->gen_id)) &&
+		    (le->type & LE_COMMIT || le->type & LE_ABORT)) {
 			head = new_head;
 			if ((le->type & LE_COMMIT) && sbi->redo_log)
 				pmfs_redo_transaction(sb, &trans, recover);
@@ -293,8 +294,9 @@ static uint32_t pmfs_process_transaction(struct super_block *sb, uint32_t head,
 		/* next log entry */
 		le++;
 		/* Handle uncommitted transactions */
-		if ((new_head == tail) || ((gen_id == le16_to_cpu(le->gen_id))
-			    && (le->type & LE_START))) {
+		if ((new_head == tail) ||
+		    ((gen_id == le16_to_cpu(le->gen_id)) &&
+		     (le->type & LE_START))) {
 			/* found a new valid transaction w/o finding a commit */
 			if (recover) {
 				/* if this function is called by recovery, move
@@ -305,9 +307,10 @@ static uint32_t pmfs_process_transaction(struct super_block *sb, uint32_t head,
 					pmfs_invalidate_logentries(sb, &trans);
 			}
 			pmfs_dbg_trans("no cmt tid %d sa %p nle %d tail %x"
-			" gen %d\n",
-			trans.transaction_id,trans.start_addr,trans.num_entries,
-			trans.num_used, trans.gen_id);
+				       " gen %d\n",
+				       trans.transaction_id, trans.start_addr,
+				       trans.num_entries, trans.num_used,
+				       trans.gen_id);
 			/* dump_transaction(sbi, &trans); */
 			break;
 		}
@@ -318,7 +321,7 @@ static uint32_t pmfs_process_transaction(struct super_block *sb, uint32_t head,
 }
 
 static int pmfs_clean_journal(struct super_block *sb, bool unmount,
-	int take_lock)
+			      int take_lock)
 {
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	pmfs_journal_t *journal = pmfs_get_journal(sb);
@@ -353,8 +356,8 @@ static int pmfs_clean_journal(struct super_block *sb, bool unmount,
 		le = (pmfs_logentry_t *)(sbi->journal_base_addr + head);
 		if (gen_id == le16_to_cpu(le->gen_id)) {
 			/* found a valid log entry, process the transaction */
-			new_head = pmfs_process_transaction(sb, head, tail,
-				le, false, &processed);
+			new_head = pmfs_process_transaction(sb, head, tail, le,
+							    false, &processed);
 			total += processed;
 			/* no progress was made. return */
 			if (new_head == head)
@@ -382,7 +385,8 @@ static int pmfs_clean_journal(struct super_block *sb, bool unmount,
 		PERSISTENT_MARK();
 		if (journal->head != journal->tail)
 			pmfs_dbg("PMFS: umount but journal not empty %x:%x\n",
-			le32_to_cpu(journal->head), le32_to_cpu(journal->tail));
+				 le32_to_cpu(journal->head),
+				 le32_to_cpu(journal->tail));
 		PERSISTENT_BARRIER();
 	}
 	pmfs_dbg_trans("leaving journal cleaning %x %x\n", head, tail);
@@ -391,7 +395,7 @@ static int pmfs_clean_journal(struct super_block *sb, bool unmount,
 	return total;
 }
 
-static void log_cleaner_try_sleeping(struct  pmfs_sb_info *sbi)
+static void log_cleaner_try_sleeping(struct pmfs_sb_info *sbi)
 {
 	DEFINE_WAIT(wait);
 	prepare_to_wait(&sbi->log_cleaner_wait, &wait, TASK_INTERRUPTIBLE);
@@ -405,7 +409,7 @@ static int pmfs_log_cleaner(void *arg)
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 
 	pmfs_dbg_trans("Running log cleaner thread\n");
-	for ( ; ; ) {
+	for (;;) {
 		log_cleaner_try_sleeping(sbi);
 
 		if (kthread_should_stop())
@@ -426,7 +430,8 @@ static int pmfs_journal_cleaner_run(struct super_block *sb)
 	init_waitqueue_head(&sbi->log_cleaner_wait);
 
 	sbi->log_cleaner_thread = kthread_run(pmfs_log_cleaner, sb,
-			"pmfs_log_cleaner_0x%llx", sbi->phys_addr);
+					      "pmfs_log_cleaner_0x%llx",
+					      sbi->phys_addr);
 	if (IS_ERR(sbi->log_cleaner_thread)) {
 		/* failure at boot is fatal */
 		pmfs_err(sb, "Failed to start pmfs log cleaner thread\n");
@@ -441,7 +446,7 @@ int pmfs_journal_soft_init(struct super_block *sb)
 	pmfs_journal_t *journal = pmfs_get_journal(sb);
 
 	sbi->next_transaction_id = 0;
-	sbi->journal_base_addr = pmfs_get_block(sb,le64_to_cpu(journal->base));
+	sbi->journal_base_addr = pmfs_get_block(sb, le64_to_cpu(journal->base));
 	sbi->jsize = le32_to_cpu(journal->size);
 	mutex_init(&sbi->journal_mutex);
 	sbi->redo_log = !!le16_to_cpu(journal->redo_logging);
@@ -449,8 +454,7 @@ int pmfs_journal_soft_init(struct super_block *sb)
 	return pmfs_journal_cleaner_run(sb);
 }
 
-int pmfs_journal_hard_init(struct super_block *sb, uint64_t base,
-	uint32_t size)
+int pmfs_journal_hard_init(struct super_block *sb, uint64_t base, uint32_t size)
 {
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	pmfs_journal_t *journal = pmfs_get_journal(sb);
@@ -508,7 +512,7 @@ static inline void set_64bit(volatile u64 *ptr, u64 val)
 }
 
 pmfs_transaction_t *pmfs_new_transaction(struct super_block *sb,
-		int max_log_entries)
+					 int max_log_entries)
 {
 	pmfs_journal_t *journal = pmfs_get_journal(sb);
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
@@ -516,7 +520,7 @@ pmfs_transaction_t *pmfs_new_transaction(struct super_block *sb,
 	uint32_t head, tail, req_size, avail_size, freed_size;
 	uint64_t base;
 	int retry = 0;
-	ktime_t log_time;
+	INIT_TIMING(log_time);
 #if 0
 	trans = pmfs_current_transaction();
 
@@ -548,16 +552,15 @@ pmfs_transaction_t *pmfs_new_transaction(struct super_block *sb,
 	trans->transaction_id = sbi->next_transaction_id++;
 again:
 	trans->gen_id = le16_to_cpu(journal->gen_id);
-	avail_size = (tail >= head) ?
-		(sbi->jsize - (tail - head)) : (head - tail);
+	avail_size = (tail >= head) ? (sbi->jsize - (tail - head)) :
+				      (head - tail);
 	avail_size = avail_size - LOGENTRY_SIZE;
 
 	if (avail_size < req_size) {
 		/* run the log cleaner function to free some log entries */
 		freed_size = 0;
 		for (retry = 0; retry < 3; retry++) {
-			freed_size += pmfs_free_logentries(sb,
-						max_log_entries);
+			freed_size += pmfs_free_logentries(sb, max_log_entries);
 			if ((avail_size + freed_size) >= req_size)
 				break;
 		}
@@ -576,12 +579,15 @@ again:
 		tail = 0;
 		ptr = (u64 *)&journal->tail;
 		/* writing 8-bytes atomically setting tail to 0 */
-		set_64bit(ptr, (__force u64)cpu_to_le64((u64)next_gen_id(
-					le16_to_cpu(journal->gen_id)) << 32));
+		set_64bit(ptr,
+			  (__force u64)cpu_to_le64(
+				  (u64)next_gen_id(le16_to_cpu(journal->gen_id))
+				  << 32));
 		pmfs_memlock_range(sb, journal, sizeof(*journal));
 		pmfs_dbg_trans("journal wrapped. tail %x gid %d cur tid %d\n",
-			le32_to_cpu(journal->tail),le16_to_cpu(journal->gen_id),
-				sbi->next_transaction_id - 1);
+			       le32_to_cpu(journal->tail),
+			       le16_to_cpu(journal->gen_id),
+			       sbi->next_transaction_id - 1);
 		goto again;
 	} else {
 		journal->tail = cpu_to_le32(tail);
@@ -596,7 +602,8 @@ again:
 		wakeup_log_cleaner(sbi);
 
 	pmfs_dbg_trans("new transaction tid %d nle %d avl sz %x sa %llx\n",
-		trans->transaction_id, max_log_entries, avail_size, base);
+		       trans->transaction_id, max_log_entries, avail_size,
+		       base);
 	trans->start_addr = pmfs_get_block(sb, base);
 
 	trans->parent = (pmfs_transaction_t *)current->journal_info;
@@ -606,18 +613,19 @@ again:
 journal_full:
 	mutex_unlock(&sbi->journal_mutex);
 	pmfs_err(sb, "Journal full. base %llx sz %x head:tail %x:%x ncl %x\n",
-		le64_to_cpu(journal->base), le32_to_cpu(journal->size),
-		le32_to_cpu(journal->head), le32_to_cpu(journal->tail),
-		max_log_entries);
+		 le64_to_cpu(journal->base), le32_to_cpu(journal->size),
+		 le32_to_cpu(journal->head), le32_to_cpu(journal->tail),
+		 max_log_entries);
 	pmfs_err(sb, "avail size %u, freed size %u, request size %u\n",
-		avail_size, freed_size, req_size);
+		 avail_size, freed_size, req_size);
 	pmfs_free_transaction(trans);
 	PMFS_END_TIMING(new_trans_t, log_time);
 	return ERR_PTR(-EAGAIN);
 }
 
 static inline void pmfs_commit_logentry(struct super_block *sb,
-		pmfs_transaction_t *trans, pmfs_logentry_t *le)
+					pmfs_transaction_t *trans,
+					pmfs_logentry_t *le)
 {
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	if (sbi->redo_log) {
@@ -650,15 +658,15 @@ static inline void pmfs_commit_logentry(struct super_block *sb,
 	}
 }
 
-int pmfs_add_logentry(struct super_block *sb,
-		pmfs_transaction_t *trans, void *addr, uint16_t size, u8 type)
+int pmfs_add_logentry(struct super_block *sb, pmfs_transaction_t *trans,
+		      void *addr, uint16_t size, u8 type)
 {
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	pmfs_logentry_t *le;
 	int num_les = 0, i;
 	uint64_t le_start = size ? pmfs_get_addr_off(sbi, addr) : 0;
 	uint8_t le_size;
-	ktime_t add_log_time;
+	INIT_TIMING(add_log_time);
 
 	if (trans == NULL)
 		return -EINVAL;
@@ -671,16 +679,16 @@ int pmfs_add_logentry(struct super_block *sb,
 		if ((type & LE_COMMIT) || (type & LE_ABORT))
 			num_les = 1;
 	} else
-		num_les = (size + sizeof(le->data) - 1)/sizeof(le->data);
+		num_les = (size + sizeof(le->data) - 1) / sizeof(le->data);
 
 	pmfs_dbg_trans("add le id %d size %x, num_les %d tail %x le %p\n",
-		trans->transaction_id, size, trans->num_entries,
-		trans->num_used, le);
+		       trans->transaction_id, size, trans->num_entries,
+		       trans->num_used, le);
 
 	if ((trans->num_used + num_les) > trans->num_entries) {
 		pmfs_err(sb, "Log Entry full. tid %x ne %x tail %x size %x\n",
-			trans->transaction_id, trans->num_entries,
-			trans->num_used, size);
+			 trans->transaction_id, trans->num_entries,
+			 trans->num_used, size);
 		dump_transaction(sbi, trans);
 		dump_stack();
 		return -ENOMEM;
@@ -729,10 +737,9 @@ int pmfs_add_logentry(struct super_block *sb,
 	return 0;
 }
 
-int pmfs_commit_transaction(struct super_block *sb,
-		pmfs_transaction_t *trans)
+int pmfs_commit_transaction(struct super_block *sb, pmfs_transaction_t *trans)
 {
-	ktime_t commit_time;
+	INIT_TIMING(commit_time);
 
 	if (trans == NULL)
 		return 0;
@@ -741,7 +748,7 @@ int pmfs_commit_transaction(struct super_block *sb,
 
 	PMFS_START_TIMING(commit_trans_t, commit_time);
 	pmfs_dbg_trans("completing transaction for id %d\n",
-		trans->transaction_id);
+		       trans->transaction_id);
 
 	current->journal_info = trans->parent;
 	pmfs_free_transaction(trans);
@@ -756,8 +763,8 @@ int pmfs_abort_transaction(struct super_block *sb, pmfs_transaction_t *trans)
 	if (trans == NULL)
 		return 0;
 	pmfs_dbg_trans("abort trans for tid %x sa %p numle %d tail %x gen %d\n",
-		trans->transaction_id, trans->start_addr, trans->num_entries,
-		trans->num_used, trans->gen_id);
+		       trans->transaction_id, trans->start_addr,
+		       trans->num_entries, trans->num_used, trans->gen_id);
 	dump_transaction(sbi, trans);
 	/*dump_stack();*/
 
@@ -775,7 +782,8 @@ int pmfs_abort_transaction(struct super_block *sb, pmfs_transaction_t *trans)
 }
 
 static void invalidate_remaining_journal(struct super_block *sb,
-	void *journal_vaddr, uint32_t jtail, uint32_t jsize)
+					 void *journal_vaddr, uint32_t jtail,
+					 uint32_t jsize)
 {
 	pmfs_logentry_t *le = (pmfs_logentry_t *)(journal_vaddr + jtail);
 	void *start = le;
@@ -796,14 +804,16 @@ static void invalidate_remaining_journal(struct super_block *sb,
  * should gen_id and head be updated atomically? not necessarily? we
  * can update gen_id before journal head because gen_id and head are in
  * the same cacheline */
-static void pmfs_forward_journal(struct super_block *sb, struct pmfs_sb_info
-		*sbi, pmfs_journal_t *journal)
+static void pmfs_forward_journal(struct super_block *sb,
+				 struct pmfs_sb_info *sbi,
+				 pmfs_journal_t *journal)
 {
 	uint16_t gen_id = le16_to_cpu(journal->gen_id);
 	/* handle gen_id wrap around */
 	if (gen_id == MAX_GEN_ID) {
 		invalidate_remaining_journal(sb, sbi->journal_base_addr,
-			le32_to_cpu(journal->tail), sbi->jsize);
+					     le32_to_cpu(journal->tail),
+					     sbi->jsize);
 	}
 	PERSISTENT_MARK();
 	gen_id = next_gen_id(gen_id);
@@ -866,8 +876,8 @@ static int pmfs_recover_redo_journal(struct super_block *sb)
 	while (head != tail) {
 		le = (pmfs_logentry_t *)(sbi->journal_base_addr + head);
 		if (gen_id == le16_to_cpu(le->gen_id)) {
-			head = pmfs_process_transaction(sb, head, tail,
-				le, true, &processed);
+			head = pmfs_process_transaction(sb, head, tail, le,
+							true, &processed);
 		} else {
 			if (gen_id == MAX_GEN_ID) {
 				pmfs_memunlock_range(sb, le, sizeof(*le));
@@ -897,12 +907,11 @@ int pmfs_recover_journal(struct super_block *sb)
 	/* is the journal empty? true if unmounted properly. */
 	if (head == tail)
 		return 0;
-	pmfs_dbg("PMFS: journal recovery. head:tail %x:%x gen_id %d\n",
-		head, tail, gen_id);
+	pmfs_dbg("PMFS: journal recovery. head:tail %x:%x gen_id %d\n", head,
+		 tail, gen_id);
 	if (sbi->redo_log)
 		pmfs_recover_redo_journal(sb);
 	else
 		pmfs_recover_undo_journal(sb);
 	return 0;
 }
-

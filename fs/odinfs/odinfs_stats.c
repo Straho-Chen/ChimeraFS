@@ -74,11 +74,10 @@ void odinfs_print_meta_stats(void)
 
 	odinfs_info("write_total: %llu\n",
 		    Timingstats_meta_odinfs[bd_xip_write_t]);
-	// odinfs_info("write_meta: %llu\n",
-	// 	    Timingstats_meta_odinfs[bd_xip_write_t] -
-	// 		    Timingstats_meta_odinfs[bd_agent_copy_w_t]);
-	// odinfs_info("write_data: %llu\n",
-	// 	    Timingstats_meta_odinfs[bd_agent_copy_w_t]);
+	odinfs_info("write_meta: %llu\n", Timingstats_meta_odinfs[bd_meta_t]);
+	odinfs_info("write_data: %llu\n",
+		    Timingstats_meta_odinfs[bd_xip_write_t] -
+			    Timingstats_meta_odinfs[bd_meta_t]);
 
 	// odinfs_info("read_total: %llu\n",
 	// 	    Timingstats_meta_odinfs[bd_xip_read_t]);

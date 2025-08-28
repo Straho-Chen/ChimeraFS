@@ -302,6 +302,8 @@ static ssize_t __odinfs_xip_file_write(
 	ODINFS_DEFINE_TIMING_VAR(write_time);
 	ODINFS_DEFINE_TIMING_VAR(get_block_time);
 	ODINFS_DEFINE_TIMING_VAR(memcpy_time);
+	ODINFS_DEFINE_TIMING_VAR(meta_time);
+
 
 #if ODINFS_DELEGATION_ENABLE
 	ODINFS_DEFINE_TIMING_VAR(do_delegation_time);
@@ -334,7 +336,9 @@ static ssize_t __odinfs_xip_file_write(
 			bytes = count;
 
 		ODINFS_START_TIMING(get_block_w_t, get_block_time);
+		ODINFS_START_META_TIMING(bd_meta_t, get_block_time);
 		status = odinfs_get_xip_mem(mapping, index, 1, &xmem, &xpfn);
+		ODINFS_END_META_TIMING(bd_meta_t, get_block_time);
 		ODINFS_END_TIMING(get_block_w_t, get_block_time);
 
 		if (status)
@@ -428,11 +432,13 @@ static ssize_t __odinfs_xip_file_write(
 	 * No need to use i_size_read() here, the i_size
 	 * cannot change under us because we hold i_mutex.
 	 */
+		ODINFS_START_META_TIMING(bd_meta_t, meta_time);
 	if (pos > inode->i_size) {
 		i_size_write(inode, pos);
 		odinfs_update_isize(inode, pi);
 		odinfs_resize_range_lock(get_range_lock(inode), pos);
 	}
+		ODINFS_START_META_TIMING(bd_meta_t, meta_time);
 
 	ODINFS_END_TIMING(internal_write_t, write_time);
 	return written ? written : status;
@@ -457,6 +463,7 @@ odinfs_file_write_fast(struct super_block *sb, struct inode *inode,
 #endif
 
 	ODINFS_DEFINE_TIMING_VAR(memcpy_time);
+	ODINFS_DEFINE_TIMING_VAR(bd_meta_time);
 
 	offset = pos & (sb->s_blocksize - 1);
 
@@ -493,6 +500,7 @@ odinfs_file_write_fast(struct super_block *sb, struct inode *inode,
 	odinfs_flush_edge_cachelines(pos, copied, xmem + offset);
 	ODINFS_END_TIMING(memcpy_w_t, memcpy_time);
 #endif
+	ODINFS_START_META_TIMING(bd_meta_t, bd_meta_time);
 
 	if (likely(copied > 0)) {
 		pos += copied;
@@ -524,6 +532,7 @@ odinfs_file_write_fast(struct super_block *sb, struct inode *inode,
 		odinfs_memlock_inode(sb, pi);
 	}
 	odinfs_flush_buffer(pi, 1, false);
+	ODINFS_END_META_TIMING(bd_meta_t, bd_meta_time);
 	return ret;
 }
 
@@ -548,12 +557,15 @@ odinfs_clear_edge_blk(struct super_block *sb, struct odinfs_inode *pi,
 #endif
 
 	ODINFS_DEFINE_TIMING_VAR(memcpy_time);
+	ODINFS_DEFINE_TIMING_VAR(meta_time);
 
 	if (new_blk) {
 		blknr = block >>
 			(odinfs_inode_blk_shift(pi) - sb->s_blocksize_bits);
+	ODINFS_START_META_TIMING(bd_meta_t, meta_time);
 		ptr = odinfs_get_virt_addr_from_offset(
 			sb, __odinfs_find_data_block(sb, pi, blknr));
+	ODINFS_END_META_TIMING(bd_meta_t, meta_time);
 		if (ptr != NULL) {
 			if (is_end_blk) {
 				ptr = ptr + blk_off - (blk_off % 8);
@@ -621,6 +633,7 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
 
 	ODINFS_DEFINE_TIMING_VAR(xip_write_time);
 	ODINFS_DEFINE_TIMING_VAR(bd_write_time);
+	ODINFS_DEFINE_TIMING_VAR(bd_meta_time);
 	ODINFS_DEFINE_TIMING_VAR(xip_write_fast_time);
 
 #if ODINFS_DELEGATION_ENABLE
@@ -663,7 +676,9 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
 	start_blk = pos >> sb->s_blocksize_bits;
 	end_blk = start_blk + num_blocks - 1;
 
+	ODINFS_START_META_TIMING(bd_meta_t, bd_meta_time);
 	block = odinfs_find_data_block(inode, start_blk);
+	ODINFS_END_META_TIMING(bd_meta_t, bd_meta_time);
 
 	/* Referring to the inode's block size, not 4K */
 
@@ -733,6 +748,7 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
      */
 	odinfs_inode_rwsem_down_write(inode);
 #endif
+	ODINFS_START_META_TIMING(bd_meta_t, bd_meta_time);
 
 	max_logentries = num_blocks / MAX_PTRS_PER_LENTRY + 2;
 	if (max_logentries > MAX_METABLOCK_LENTRIES)
@@ -770,6 +786,8 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
 	/* don't zero-out the allocated blocks */
 	odinfs_alloc_blocks(trans, inode, start_blk, num_blocks, false);
 
+	ODINFS_END_META_TIMING(bd_meta_t, bd_meta_time);
+
 	/* now zero out the edge blocks which will be partially written */
 	odinfs_clear_edge_blk(sb, pi, new_sblk, start_blk, offset, false,
 			      odinfs_issued_cnt, odinfs_completed_cnt, len);
@@ -786,6 +804,8 @@ ssize_t odinfs_xip_file_write(struct file *filp, const char __user *buf,
 	odinfs_complete_delegation(odinfs_issued_cnt, odinfs_completed_cnt);
 	ODINFS_END_TIMING(fini_delegation_w_t, fini_delegation_time);
 #endif
+
+	ODINFS_START_META_TIMING(bd_meta_t, bd_meta_time);
 
 	if (written < 0 || written != count)
 		odinfs_dbg_verbose(
@@ -812,6 +832,7 @@ out:
 out_nolock:
 	sb_end_write(inode->i_sb);
 
+	ODINFS_END_META_TIMING(bd_meta_t, bd_meta_time);
 	ODINFS_END_META_TIMING(bd_xip_write_t, bd_write_time);
 	ODINFS_END_TIMING(xip_write_t, xip_write_time);
 	return ret;

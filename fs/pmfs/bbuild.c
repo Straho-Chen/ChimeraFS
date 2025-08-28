@@ -35,7 +35,7 @@ struct scan_bitmap {
 
 static void pmfs_clear_datablock_inode(struct super_block *sb)
 {
-	struct pmfs_inode *pi =  pmfs_get_inode(sb, PMFS_BLOCKNODE_IN0);
+	struct pmfs_inode *pi = pmfs_get_inode(sb, PMFS_BLOCKNODE_IN0);
 	pmfs_transaction_t *trans;
 
 	/* 2 log entry for inode */
@@ -55,7 +55,7 @@ static void pmfs_clear_datablock_inode(struct super_block *sb)
 static void pmfs_init_blockmap_from_inode(struct super_block *sb)
 {
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
-	struct pmfs_inode *pi =  pmfs_get_inode(sb, PMFS_BLOCKNODE_IN0);
+	struct pmfs_inode *pi = pmfs_get_inode(sb, PMFS_BLOCKNODE_IN0);
 	struct pmfs_blocknode_lowhigh *p = NULL;
 	struct pmfs_blocknode *blknode;
 	unsigned long index;
@@ -66,7 +66,7 @@ static void pmfs_init_blockmap_from_inode(struct super_block *sb)
 
 	num_blocknode = sbi->num_blocknode_allocated;
 	sbi->num_blocknode_allocated = 0;
-	for (i=0; i<num_blocknode; i++) {
+	for (i = 0; i < num_blocknode; i++) {
 		index = i & 0xFF;
 		if (index == 0) {
 			/* Find and get new data block */
@@ -77,7 +77,7 @@ static void pmfs_init_blockmap_from_inode(struct super_block *sb)
 		PMFS_ASSERT(p);
 		blknode = pmfs_alloc_blocknode(sb);
 		if (blknode == NULL)
-                	PMFS_ASSERT(0);
+			PMFS_ASSERT(0);
 		blknode->block_low = le64_to_cpu(p[index].block_low);
 		blknode->block_high = le64_to_cpu(p[index].block_high);
 		list_add_tail(&blknode->link, &sbi->block_inuse_head);
@@ -86,7 +86,7 @@ static void pmfs_init_blockmap_from_inode(struct super_block *sb)
 
 static bool pmfs_can_skip_full_scan(struct super_block *sb)
 {
-	struct pmfs_inode *pi =  pmfs_get_inode(sb, PMFS_BLOCKNODE_IN0);
+	struct pmfs_inode *pi = pmfs_get_inode(sb, PMFS_BLOCKNODE_IN0);
 	struct pmfs_super_block *super = pmfs_get_super(sb);
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	__le64 root;
@@ -111,7 +111,7 @@ static bool pmfs_can_skip_full_scan(struct super_block *sb)
 	btype = pi->i_blk_type;
 	/* pi->i_size can not be zero */
 	last_blocknr = (le64_to_cpu(pi->i_size) - 1) >>
-					pmfs_inode_blk_shift(pi);
+		       pmfs_inode_blk_shift(pi);
 
 	/* Clearing the datablock inode */
 	pmfs_clear_datablock_inode(sb);
@@ -121,19 +121,20 @@ static bool pmfs_can_skip_full_scan(struct super_block *sb)
 	return true;
 }
 
-
 static int pmfs_allocate_datablock_block_inode(pmfs_transaction_t *trans,
-	struct super_block *sb, struct pmfs_inode *pi, unsigned long num_blocks)
+					       struct super_block *sb,
+					       struct pmfs_inode *pi,
+					       unsigned long num_blocks)
 {
 	int errval;
-	
+
 	pmfs_memunlock_inode(sb, pi);
 	pi->i_mode = 0;
 	pi->i_links_count = cpu_to_le16(1);
 	pi->i_blk_type = PMFS_BLOCK_TYPE_4K;
 	pi->i_flags = 0;
 	pi->height = 0;
-	pi->i_dtime = 0; 
+	pi->i_dtime = 0;
 	pi->i_size = cpu_to_le64(num_blocks << sb->s_blocksize_bits);
 	pmfs_memlock_inode(sb, pi);
 
@@ -145,7 +146,7 @@ static int pmfs_allocate_datablock_block_inode(pmfs_transaction_t *trans,
 void pmfs_save_blocknode_mappings(struct super_block *sb)
 {
 	unsigned long num_blocks, blocknr;
-	struct pmfs_inode *pi =  pmfs_get_inode(sb, PMFS_BLOCKNODE_IN0);
+	struct pmfs_inode *pi = pmfs_get_inode(sb, PMFS_BLOCKNODE_IN0);
 	struct pmfs_blocknode_lowhigh *p;
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	struct list_head *head = &(sbi->block_inuse_head);
@@ -155,9 +156,12 @@ void pmfs_save_blocknode_mappings(struct super_block *sb)
 	u64 bp;
 	int j, k;
 	int errval;
-	
-	num_blocks = ((sbi->num_blocknode_allocated * sizeof(struct 
-		pmfs_blocknode_lowhigh) - 1) >> sb->s_blocksize_bits) + 1;
+
+	num_blocks = ((sbi->num_blocknode_allocated *
+			       sizeof(struct pmfs_blocknode_lowhigh) -
+		       1) >>
+		      sb->s_blocksize_bits) +
+		     1;
 
 	/* 2 log entry for inode, 2 lentry for super-block */
 	trans = pmfs_new_transaction(sb, MAX_INODE_LENTRIES + MAX_SB_LENTRIES);
@@ -182,7 +186,7 @@ void pmfs_save_blocknode_mappings(struct super_block *sb)
 		if (j == 0) {
 			/* Find, get and unlock new data block */
 			bp = __pmfs_find_data_block(sb, pi, blocknr);
-			p = pmfs_get_block(sb, bp); 
+			p = pmfs_get_block(sb, bp);
 			pmfs_memunlock_block(sb, p);
 		}
 		p[j].block_low = cpu_to_le64(i->block_low);
@@ -195,15 +199,15 @@ void pmfs_save_blocknode_mappings(struct super_block *sb)
 			pmfs_memlock_block(sb, p);
 			pmfs_flush_buffer(p, 4096, false);
 		}
-		
+
 		k++;
 	}
-	
-	/* Lock the block */	
+
+	/* Lock the block */
 	if (j) {
 		pmfs_flush_buffer(p, j << 4, false);
-		pmfs_memlock_block(sb, p);	
-	}	
+		pmfs_memlock_block(sb, p);
+	}
 
 	/* 
 	 * save the total allocated blocknode mappings 
@@ -211,13 +215,13 @@ void pmfs_save_blocknode_mappings(struct super_block *sb)
 	 */
 	super = pmfs_get_super(sb);
 	pmfs_add_logentry(sb, trans, &super->s_wtime,
-			PMFS_FAST_MOUNT_FIELD_SIZE, LE_DATA);
+			  PMFS_FAST_MOUNT_FIELD_SIZE, LE_DATA);
 
 	pmfs_memunlock_range(sb, &super->s_wtime, PMFS_FAST_MOUNT_FIELD_SIZE);
 
 	super->s_wtime = cpu_to_le32(ktime_get_seconds());
-	super->s_num_blocknode_allocated = 
-			cpu_to_le64(sbi->num_blocknode_allocated);
+	super->s_num_blocknode_allocated =
+		cpu_to_le64(sbi->num_blocknode_allocated);
 	super->s_num_free_blocks = cpu_to_le64(sbi->num_free_blocks);
 	super->s_inodes_count = cpu_to_le32(sbi->s_inodes_count);
 	super->s_free_inodes_count = cpu_to_le32(sbi->s_free_inodes_count);
@@ -230,8 +234,9 @@ void pmfs_save_blocknode_mappings(struct super_block *sb)
 }
 
 static void pmfs_inode_crawl_recursive(struct super_block *sb,
-				struct scan_bitmap *bm, unsigned long block,
-				u32 height, u8 btype)
+				       struct scan_bitmap *bm,
+				       unsigned long block, u32 height,
+				       u8 btype)
 {
 	__le64 *node;
 	unsigned int i;
@@ -253,29 +258,31 @@ static void pmfs_inode_crawl_recursive(struct super_block *sb,
 	for (i = 0; i < (1 << META_BLK_SHIFT); i++) {
 		if (node[i] == 0)
 			continue;
-		pmfs_inode_crawl_recursive(sb, bm,
-			le64_to_cpu(node[i]), height - 1, btype);
+		pmfs_inode_crawl_recursive(sb, bm, le64_to_cpu(node[i]),
+					   height - 1, btype);
 	}
 }
 
 static inline void pmfs_inode_crawl(struct super_block *sb,
-				struct scan_bitmap *bm, struct pmfs_inode *pi)
+				    struct scan_bitmap *bm,
+				    struct pmfs_inode *pi)
 {
 	if (pi->root == 0)
 		return;
 	pmfs_inode_crawl_recursive(sb, bm, le64_to_cpu(pi->root), pi->height,
-					pi->i_blk_type);
+				   pi->i_blk_type);
 }
 
 static void pmfs_inode_table_crawl_recursive(struct super_block *sb,
-				struct scan_bitmap *bm, unsigned long block,
-				u32 height, u32 btype)
+					     struct scan_bitmap *bm,
+					     unsigned long block, u32 height,
+					     u32 btype)
 {
 	__le64 *node;
 	unsigned int i;
 	struct pmfs_inode *pi;
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
-	
+
 	node = pmfs_get_block(sb, block);
 
 	if (height == 0) {
@@ -288,12 +295,12 @@ static void pmfs_inode_table_crawl_recursive(struct super_block *sb,
 		sbi->s_inodes_count += inodes_per_block;
 		for (i = 0; i < inodes_per_block; i++) {
 			pi = (struct pmfs_inode *)((void *)node +
-                                                        PMFS_INODE_SIZE * i);
+						   PMFS_INODE_SIZE * i);
 			if (le16_to_cpu(pi->i_links_count) == 0 &&
-                        	(le16_to_cpu(pi->i_mode) == 0 ||
-                         	le32_to_cpu(pi->i_dtime))) {
-					/* Empty inode */
-					continue;
+			    (le16_to_cpu(pi->i_mode) == 0 ||
+			     le32_to_cpu(pi->i_dtime))) {
+				/* Empty inode */
+				continue;
 			}
 			sbi->s_inodes_used_count++;
 			pmfs_inode_crawl(sb, bm, pi);
@@ -305,18 +312,19 @@ static void pmfs_inode_table_crawl_recursive(struct super_block *sb,
 	for (i = 0; i < (1 << META_BLK_SHIFT); i++) {
 		if (node[i] == 0)
 			continue;
-		pmfs_inode_table_crawl_recursive(sb, bm,
-			le64_to_cpu(node[i]), height - 1, btype);
+		pmfs_inode_table_crawl_recursive(sb, bm, le64_to_cpu(node[i]),
+						 height - 1, btype);
 	}
 }
 
 static int pmfs_alloc_insert_blocknode_map(struct super_block *sb,
-	unsigned long low, unsigned long high)
+					   unsigned long low,
+					   unsigned long high)
 {
 	struct pmfs_sb_info *sbi = PMFS_SB(sb);
 	struct list_head *head = &(sbi->block_inuse_head);
 	struct pmfs_blocknode *i, *next_i;
-	struct pmfs_blocknode *free_blocknode= NULL;
+	struct pmfs_blocknode *free_blocknode = NULL;
 	unsigned long num_blocks = 0;
 	struct pmfs_blocknode *curr_node;
 	int errval = 0;
@@ -340,15 +348,13 @@ static int pmfs_alloc_insert_blocknode_map(struct super_block *sb,
 			next_block_low = next_i->block_low;
 		}
 
-
 		if (new_block_high >= next_block_low) {
 			/* Does not fit - skip to next blocknode */
 			continue;
 		}
 
 		if ((new_block_low == (i->block_high + 1)) &&
-			(new_block_high == (next_block_low - 1)))
-		{
+		    (new_block_high == (next_block_low - 1))) {
 			/* Fill the gap completely */
 			if (next_i) {
 				i->block_high = next_i->block_high;
@@ -362,7 +368,7 @@ static int pmfs_alloc_insert_blocknode_map(struct super_block *sb,
 		}
 
 		if ((new_block_low == (i->block_high + 1)) &&
-			(new_block_high < (next_block_low - 1))) {
+		    (new_block_high < (next_block_low - 1))) {
 			/* Aligns to left */
 			i->block_high = new_block_high;
 			found = 1;
@@ -370,7 +376,7 @@ static int pmfs_alloc_insert_blocknode_map(struct super_block *sb,
 		}
 
 		if ((new_block_low > (i->block_high + 1)) &&
-			(new_block_high == (next_block_low - 1))) {
+		    (new_block_high == (next_block_low - 1))) {
 			/* Aligns to right */
 			if (next_i) {
 				/* right node exist */
@@ -392,7 +398,7 @@ static int pmfs_alloc_insert_blocknode_map(struct super_block *sb,
 		}
 
 		if ((new_block_low > (i->block_high + 1)) &&
-			(new_block_high < (next_block_low - 1))) {
+		    (new_block_high < (next_block_low - 1))) {
 			/* Aligns somewhere in the middle */
 			curr_node = pmfs_alloc_blocknode(sb);
 			PMFS_ASSERT(curr_node);
@@ -407,10 +413,10 @@ static int pmfs_alloc_insert_blocknode_map(struct super_block *sb,
 			break;
 		}
 	}
-	
+
 	if (found == 1) {
 		sbi->num_free_blocks -= num_blocks;
-	}	
+	}
 
 	if (free_blocknode)
 		pmfs_free_blocknode(sb, free_blocknode);
@@ -419,12 +425,12 @@ static int pmfs_alloc_insert_blocknode_map(struct super_block *sb,
 		return -ENOSPC;
 	}
 
-
 	return errval;
 }
 
 static int __pmfs_build_blocknode_map(struct super_block *sb,
-	unsigned long *bitmap, unsigned long bsize, unsigned long scale)
+				      unsigned long *bitmap,
+				      unsigned long bsize, unsigned long scale)
 {
 	unsigned long next = 1;
 	unsigned long low = 0;
@@ -435,26 +441,26 @@ static int __pmfs_build_blocknode_map(struct super_block *sb,
 			break;
 		low = next;
 		next = find_next_zero_bit(bitmap, bsize, next);
-		if (pmfs_alloc_insert_blocknode_map(sb, low << scale ,
-				(next << scale) - 1)) {
+		if (pmfs_alloc_insert_blocknode_map(sb, low << scale,
+						    (next << scale) - 1)) {
 			printk("PMFS: Error could not insert 0x%lx-0x%lx\n",
-				low << scale, ((next << scale) - 1));
+			       low << scale, ((next << scale) - 1));
 		}
 		if (next == bsize)
 			break;
 	}
 	return 0;
 }
-	
+
 static void pmfs_build_blocknode_map(struct super_block *sb,
-							struct scan_bitmap *bm)
+				     struct scan_bitmap *bm)
 {
 	__pmfs_build_blocknode_map(sb, bm->bitmap_4k, bm->bitmap_4k_size * 8,
-		PAGE_SHIFT - 12);
+				   PAGE_SHIFT - 12);
 	__pmfs_build_blocknode_map(sb, bm->bitmap_2M, bm->bitmap_2M_size * 8,
-		PAGE_SHIFT_2M - 12);
+				   PAGE_SHIFT_2M - 12);
 	__pmfs_build_blocknode_map(sb, bm->bitmap_1G, bm->bitmap_1G_size * 8,
-		PAGE_SHIFT_1G - 12);
+				   PAGE_SHIFT_1G - 12);
 }
 
 int pmfs_setup_blocknode_map(struct super_block *sb)
@@ -466,18 +472,19 @@ int pmfs_setup_blocknode_map(struct super_block *sb)
 	struct scan_bitmap bm;
 	unsigned long initsize = le64_to_cpu(super->s_size);
 	bool value = false;
-	ktime_t start, end;
+	INIT_TIMING(start);
+	INIT_TIMING(end);
 
 	/* Always check recovery time */
 	if (measure_timing == 0)
-		start = ktime_get_raw();
+		ktime_get_ts64(&start);
 
 	PMFS_START_TIMING(recovery_t, start);
 
 	mutex_init(&sbi->inode_table_mutex);
 	sbi->block_start = (unsigned long)0;
 	sbi->block_end = ((unsigned long)(initsize) >> PAGE_SHIFT);
-	
+
 	value = pmfs_can_skip_full_scan(sb);
 	if (value) {
 		pmfs_dbg_verbose("PMFS: Skipping full scan of inodes...\n");
@@ -496,17 +503,17 @@ int pmfs_setup_blocknode_map(struct super_block *sb)
 
 	if (!bm.bitmap_4k || !bm.bitmap_2M || !bm.bitmap_1G)
 		goto skip;
-	
+
 	/* Clearing the datablock inode */
 	pmfs_clear_datablock_inode(sb);
 
 	pmfs_inode_table_crawl_recursive(sb, &bm, le64_to_cpu(pi->root),
-						pi->height, pi->i_blk_type);
+					 pi->height, pi->i_blk_type);
 
 	/* Reserving tow inodes - Inode 0 and Inode for datablock */
-	sbi->s_free_inodes_count = sbi->s_inodes_count -  
-		(sbi->s_inodes_used_count + 2);
-	
+	sbi->s_free_inodes_count =
+		sbi->s_inodes_count - (sbi->s_inodes_used_count + 2);
+
 	/* set the block 0 as this is used */
 	sbi->s_free_inode_hint = PMFS_FREE_INODE_HINT_START;
 
@@ -517,7 +524,7 @@ int pmfs_setup_blocknode_map(struct super_block *sb)
 	pmfs_build_blocknode_map(sb, &bm);
 
 skip:
-	
+
 	kfree(bm.bitmap_4k);
 	kfree(bm.bitmap_2M);
 	kfree(bm.bitmap_1G);
@@ -525,8 +532,10 @@ skip:
 end:
 	PMFS_END_TIMING(recovery_t, start);
 	if (measure_timing == 0) {
-		end = ktime_get_raw();
-		Timingstats[recovery_t] += (end - start);
+		ktime_get_ts64(&end);
+		Timingstats[recovery_t] +=
+			(end.tv_sec - start.tv_sec) * 1000000000 +
+			(end.tv_nsec - start.tv_nsec);
 	}
 
 	return 0;

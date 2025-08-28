@@ -22,11 +22,12 @@
  */
 
 #define DT2IF(dt) (((dt) << 12) & S_IFMT)
-#define IF2DT(sif) (((sif) & S_IFMT) >> 12)
+#define IF2DT(sif) (((sif)&S_IFMT) >> 12)
 
 static int pmfs_add_dirent_to_buf(pmfs_transaction_t *trans,
-	struct dentry *dentry, struct inode *inode,
-	struct pmfs_direntry *de, u8 *blk_base,  struct pmfs_inode *pidir)
+				  struct dentry *dentry, struct inode *inode,
+				  struct pmfs_direntry *de, u8 *blk_base,
+				  struct pmfs_inode *pidir)
 {
 	struct inode *dir = dentry->d_parent->d_inode;
 	const char *name = dentry->d_name.name;
@@ -64,7 +65,7 @@ static int pmfs_add_dirent_to_buf(pmfs_transaction_t *trans,
 	if (de->ino) {
 		struct pmfs_direntry *de1;
 		pmfs_add_logentry(dir->i_sb, trans, &de->de_len,
-			sizeof(de->de_len), LE_DATA);
+				  sizeof(de->de_len), LE_DATA);
 		nlen = PMFS_DIR_REC_LEN(de->name_len);
 		de1 = (struct pmfs_direntry *)((char *)de + nlen);
 		pmfs_memunlock_block(dir->i_sb, blk_base);
@@ -73,8 +74,8 @@ static int pmfs_add_dirent_to_buf(pmfs_transaction_t *trans,
 		pmfs_memlock_block(dir->i_sb, blk_base);
 		de = de1;
 	} else {
-		pmfs_add_logentry(dir->i_sb, trans, &de->ino,
-			sizeof(de->ino), LE_DATA);
+		pmfs_add_logentry(dir->i_sb, trans, &de->ino, sizeof(de->ino),
+				  LE_DATA);
 	}
 	pmfs_memunlock_block(dir->i_sb, blk_base);
 	/*de->file_type = 0;*/
@@ -107,7 +108,7 @@ static int pmfs_add_dirent_to_buf(pmfs_transaction_t *trans,
  * already been logged for consistency
  */
 int pmfs_add_entry(pmfs_transaction_t *trans, struct dentry *dentry,
-		struct inode *inode)
+		   struct inode *inode)
 {
 	struct inode *dir = dentry->d_parent->d_inode;
 	struct super_block *sb = dir->i_sb;
@@ -125,14 +126,13 @@ int pmfs_add_entry(pmfs_transaction_t *trans, struct dentry *dentry,
 
 	blocks = dir->i_size >> sb->s_blocksize_bits;
 	for (block = 0; block < blocks; block++) {
-		blk_base =
-			pmfs_get_block(sb, pmfs_find_data_block(dir, block));
+		blk_base = pmfs_get_block(sb, pmfs_find_data_block(dir, block));
 		if (!blk_base) {
 			retval = -EIO;
 			goto out;
 		}
-		retval = pmfs_add_dirent_to_buf(trans, dentry, inode,
-				NULL, blk_base, pidir);
+		retval = pmfs_add_dirent_to_buf(trans, dentry, inode, NULL,
+						blk_base, pidir);
 		if (retval != -ENOSPC)
 			goto out;
 	}
@@ -156,7 +156,7 @@ int pmfs_add_entry(pmfs_transaction_t *trans, struct dentry *dentry,
 	pmfs_memlock_block(sb, blk_base);
 	/* Since this is a new block, no need to log changes to this block */
 	retval = pmfs_add_dirent_to_buf(NULL, dentry, inode, de, blk_base,
-		pidir);
+					pidir);
 out:
 	return retval;
 }
@@ -165,7 +165,7 @@ out:
  * already been logged for consistency
  */
 int pmfs_remove_entry(pmfs_transaction_t *trans, struct dentry *de,
-		struct inode *inode)
+		      struct inode *inode)
 {
 	struct super_block *sb = inode->i_sb;
 	struct inode *dir = de->d_parent->d_inode;
@@ -182,13 +182,12 @@ int pmfs_remove_entry(pmfs_transaction_t *trans, struct dentry *de,
 	blocks = dir->i_size >> sb->s_blocksize_bits;
 
 	for (block = 0; block < blocks; block++) {
-		blk_base =
-			pmfs_get_block(sb, pmfs_find_data_block(dir, block));
+		blk_base = pmfs_get_block(sb, pmfs_find_data_block(dir, block));
 		if (!blk_base)
 			goto out;
 		if (pmfs_search_dirblock(blk_base, dir, entry,
-					  block << sb->s_blocksize_bits,
-					  &res_entry, &prev_entry) == 1)
+					 block << sb->s_blocksize_bits,
+					 &res_entry, &prev_entry) == 1)
 			break;
 	}
 
@@ -196,7 +195,7 @@ int pmfs_remove_entry(pmfs_transaction_t *trans, struct dentry *de,
 		goto out;
 	if (prev_entry) {
 		pmfs_add_logentry(sb, trans, &prev_entry->de_len,
-				sizeof(prev_entry->de_len), LE_DATA);
+				  sizeof(prev_entry->de_len), LE_DATA);
 		pmfs_memunlock_block(sb, blk_base);
 		prev_entry->de_len =
 			cpu_to_le16(le16_to_cpu(prev_entry->de_len) +
@@ -204,7 +203,7 @@ int pmfs_remove_entry(pmfs_transaction_t *trans, struct dentry *de,
 		pmfs_memlock_block(sb, blk_base);
 	} else {
 		pmfs_add_logentry(sb, trans, &res_entry->ino,
-				sizeof(res_entry->ino), LE_DATA);
+				  sizeof(res_entry->ino), LE_DATA);
 		pmfs_memunlock_block(sb, blk_base);
 		res_entry->ino = 0;
 		pmfs_memlock_block(sb, blk_base);
@@ -233,7 +232,7 @@ static int pmfs_readdir(struct file *file, struct dir_context *ctx)
 	unsigned long offset;
 	struct pmfs_direntry *de;
 	ino_t ino;
-	ktime_t readdir_time;
+	INIT_TIMING(readdir_time);
 
 	PMFS_START_TIMING(readdir_t, readdir_time);
 
@@ -241,10 +240,10 @@ static int pmfs_readdir(struct file *file, struct dir_context *ctx)
 	while (ctx->pos < inode->i_size) {
 		unsigned long blk = ctx->pos >> sb->s_blocksize_bits;
 
-		blk_base =
-			pmfs_get_block(sb, pmfs_find_data_block(inode, blk));
+		blk_base = pmfs_get_block(sb, pmfs_find_data_block(inode, blk));
 		if (!blk_base) {
-			pmfs_dbg("directory %lu contains a hole at offset %lld\n",
+			pmfs_dbg(
+				"directory %lu contains a hole at offset %lld\n",
 				inode->i_ino, ctx->pos);
 			ctx->pos += sb->s_blocksize - offset;
 			continue;
@@ -270,11 +269,10 @@ static int pmfs_readdir(struct file *file, struct dir_context *ctx)
 			file->f_version = inode->i_version;
 		}
 #endif
-		while (ctx->pos < inode->i_size
-		       && offset < sb->s_blocksize) {
+		while (ctx->pos < inode->i_size && offset < sb->s_blocksize) {
 			de = (struct pmfs_direntry *)(blk_base + offset);
 			if (!pmfs_check_dir_entry("pmfs_readdir", inode, de,
-						   blk_base, offset)) {
+						  blk_base, offset)) {
 				/* On error, skip to the next block. */
 				ctx->pos = ALIGN(ctx->pos, sb->s_blocksize);
 				break;
@@ -283,8 +281,8 @@ static int pmfs_readdir(struct file *file, struct dir_context *ctx)
 			if (de->ino) {
 				ino = le64_to_cpu(de->ino);
 				pi = pmfs_get_inode(sb, ino);
-				if (!dir_emit(ctx, de->name, de->name_len,
-					ino, IF2DT(le16_to_cpu(pi->i_mode))))
+				if (!dir_emit(ctx, de->name, de->name_len, ino,
+					      IF2DT(le16_to_cpu(pi->i_mode))))
 					return 0;
 			}
 			ctx->pos += le16_to_cpu(de->de_len);
@@ -296,11 +294,11 @@ static int pmfs_readdir(struct file *file, struct dir_context *ctx)
 }
 
 const struct file_operations pmfs_dir_operations = {
-	.read		= generic_read_dir,
-	.iterate_shared	= pmfs_readdir,
-	.fsync		= noop_fsync,
+	.read = generic_read_dir,
+	.iterate_shared = pmfs_readdir,
+	.fsync = noop_fsync,
 	.unlocked_ioctl = pmfs_ioctl,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl	= pmfs_compat_ioctl,
+	.compat_ioctl = pmfs_compat_ioctl,
 #endif
 };

@@ -25,7 +25,7 @@
 #include "xip.h"
 
 static inline int pmfs_can_set_blocksize_hint(struct pmfs_inode *pi,
-					       loff_t new_size)
+					      loff_t new_size)
 {
 	/* Currently, we don't deallocate data blocks till the file is deleted.
 	 * So no changing blocksize hints once allocation is done. */
@@ -35,19 +35,19 @@ static inline int pmfs_can_set_blocksize_hint(struct pmfs_inode *pi,
 }
 
 int pmfs_set_blocksize_hint(struct super_block *sb, struct pmfs_inode *pi,
-		loff_t new_size)
+			    loff_t new_size)
 {
 	unsigned short block_type;
 
 	if (!pmfs_can_set_blocksize_hint(pi, new_size))
 		return 0;
 
-	if (new_size >= 0x40000000) {   /* 1G */
+	if (new_size >= 0x40000000) { /* 1G */
 		block_type = PMFS_BLOCK_TYPE_1G;
 		goto hint_set;
 	}
 
-	if (new_size >= 0x200000) {     /* 2M */
+	if (new_size >= 0x200000) { /* 2M */
 		block_type = PMFS_BLOCK_TYPE_2M;
 		goto hint_set;
 	}
@@ -56,9 +56,8 @@ int pmfs_set_blocksize_hint(struct super_block *sb, struct pmfs_inode *pi,
 	block_type = PMFS_BLOCK_TYPE_4K;
 
 hint_set:
-	pmfs_dbg_verbose(
-		"Hint: new_size 0x%llx, i_size 0x%llx, root 0x%llx\n",
-		new_size, pi->i_size, le64_to_cpu(pi->root));
+	pmfs_dbg_verbose("Hint: new_size 0x%llx, i_size 0x%llx, root 0x%llx\n",
+			 new_size, pi->i_size, le64_to_cpu(pi->root));
 	pmfs_dbg_verbose("Setting the hint to 0x%x\n", block_type);
 	pmfs_memunlock_inode(sb, pi);
 	pi->i_blk_type = block_type;
@@ -67,7 +66,7 @@ hint_set:
 }
 
 static long pmfs_fallocate(struct file *file, int mode, loff_t offset,
-			    loff_t len)
+			   loff_t len)
 {
 	struct inode *inode = file->f_path.dentry->d_inode;
 	struct super_block *sb = inode->i_sb;
@@ -100,7 +99,7 @@ static long pmfs_fallocate(struct file *file, int mode, loff_t offset,
 		goto out;
 	}
 	trans = pmfs_new_transaction(sb, MAX_INODE_LENTRIES +
-			MAX_METABLOCK_LENTRIES);
+						 MAX_METABLOCK_LENTRIES);
 	if (IS_ERR(trans)) {
 		ret = PTR_ERR(trans);
 		goto out;
@@ -189,7 +188,7 @@ int pmfs_fsync(struct file *file, loff_t start, loff_t end, int datasync)
 	struct address_space *mapping = file->f_mapping;
 	struct inode *inode = mapping->host;
 	loff_t isize;
-	ktime_t fsync_time;
+	INIT_TIMING(fsync_time);
 
 	PMFS_START_TIMING(fsync_t, fsync_time);
 	/* if the file is not mmap'ed, there is no need to do clflushes */
@@ -202,10 +201,10 @@ int pmfs_fsync(struct file *file, loff_t start, loff_t end, int datasync)
 
 	if ((unsigned long)end > (unsigned long)isize)
 		end = isize;
-	if (!isize || (start >= end))
-	{
+	if (!isize || (start >= end)) {
 		pmfs_dbg_verbose("[%s:%d] : (ERR) isize(%llx), start(%llx),"
-			" end(%llx)\n", __func__, __LINE__, isize, start, end);
+				 " end(%llx)\n",
+				 __func__, __LINE__, isize, start, end);
 		PMFS_END_TIMING(fsync_t, fsync_time);
 		return -ENODATA;
 	}
@@ -237,7 +236,8 @@ int pmfs_fsync(struct file *file, loff_t start, loff_t end, int datasync)
 		} else {
 			/* sparse files could have such holes */
 			pmfs_dbg_verbose("[%s:%d] : start(%llx), end(%llx),"
-			" pgoff(%lx)\n", __func__, __LINE__, start, end, pgoff);
+					 " pgoff(%lx)\n",
+					 __func__, __LINE__, start, end, pgoff);
 			break;
 		}
 
@@ -319,27 +319,27 @@ pmfs_get_unmapped_area(struct file *file, unsigned long addr,
 #endif
 
 const struct file_operations pmfs_xip_file_operations = {
-	.llseek			= pmfs_llseek,
-	.read			= pmfs_xip_file_read,
-	.write			= pmfs_xip_file_write,
-//	.aio_read		= xip_file_aio_read,
-//	.aio_write		= xip_file_aio_write,
-//	.read_iter		= generic_file_read_iter,
-//	.write_iter		= generic_file_write_iter,
-	.mmap			= pmfs_xip_file_mmap,
-	.open			= generic_file_open,
-	.fsync			= pmfs_fsync,
-	.flush			= pmfs_flush,
-//	.get_unmapped_area	= pmfs_get_unmapped_area,
-	.unlocked_ioctl		= pmfs_ioctl,
-	.fallocate		= pmfs_fallocate,
+	.llseek = pmfs_llseek,
+	.read = pmfs_xip_file_read,
+	.write = pmfs_xip_file_write,
+	//	.aio_read		= xip_file_aio_read,
+	//	.aio_write		= xip_file_aio_write,
+	//	.read_iter		= generic_file_read_iter,
+	//	.write_iter		= generic_file_write_iter,
+	.mmap = pmfs_xip_file_mmap,
+	.open = generic_file_open,
+	.fsync = pmfs_fsync,
+	.flush = pmfs_flush,
+	//	.get_unmapped_area	= pmfs_get_unmapped_area,
+	.unlocked_ioctl = pmfs_ioctl,
+	.fallocate = pmfs_fallocate,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl		= pmfs_compat_ioctl,
+	.compat_ioctl = pmfs_compat_ioctl,
 #endif
 };
 
 const struct inode_operations pmfs_file_inode_operations = {
-	.setattr	= pmfs_notify_change,
-	.getattr	= pmfs_getattr,
-	.get_acl	= NULL,
+	.setattr = pmfs_notify_change,
+	.getattr = pmfs_getattr,
+	.get_acl = NULL,
 };
