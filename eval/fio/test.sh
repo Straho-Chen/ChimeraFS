@@ -14,8 +14,6 @@ TOOLS_PATH=$ABS_PATH/../tools
 # DELEGATION_FS=("parfs" "odinfs")
 DELEGATION_FS=("parfs")
 
-# UFS=("madfs")
-
 # in MB
 TOTAL_FILE_SIZE=$((32 * 1024))
 
@@ -185,20 +183,3 @@ do_fio_ufs() {
 
     table_add_row "$TABLE_NAME" "$fs $op $fsize $bsz $job $BW"
 }
-
-for fs in "${UFS[@]}"; do
-    ulib_path=$(ufs_lib_path "$fs")
-    for bsz in "${BLK_SIZES[@]}"; do
-        for job in "${NUM_JOBS[@]}"; do
-            fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
-            for ((i = 1; i <= loop; i++)); do
-
-                do_fio_ufs "$fs" "write" "$fsize" "$bsz" "$job" "$ulib_path"
-                do_fio_ufs "$fs" "read" "$fsize" "$bsz" "$job" "$ulib_path"
-                do_fio_ufs "$fs" "randwrite" "$fsize" "$bsz" "$job" "$ulib_path"
-                do_fio_ufs "$fs" "randread" "$fsize" "$bsz" "$job" "$ulib_path"
-
-            done
-        done
-    done
-done

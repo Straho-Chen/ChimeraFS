@@ -48,17 +48,6 @@ function drop_cache() {
     echo 3 | sudo tee /proc/sys/vm/drop_caches
 }
 
-function ufs_lib_path() {
-    local fs=$1
-    ABS_PATH=$(where_is_script "$0")
-    FS_PATH=$ABS_PATH/../../fs
-    if [[ "$fs" == "madfs" ]]; then
-        echo "$FS_PATH/Madfs/build-release/libmadfs.so"
-    else
-        echo ""
-    fi
-}
-
 function dmesg_attr_time() {
     local output="$1"
     local stat="$2"
@@ -79,13 +68,7 @@ function compile_fs() {
     fi
     dir_change() (
         cd "$FS_DIR" || exit
-        if [[ "$fs" == "madfs" ]]; then
-            cd "$FS_DIR/Madfs" || exit
-            make BUILD_TARGETS="madfs"
-            cd "$FS_DIR" || exit
-        else
-            bash compile.sh "$fs" "$bd" "$debug"
-        fi
+        bash compile.sh "$fs" "$bd" "$debug"
     )
     dir_change
 }

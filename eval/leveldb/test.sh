@@ -19,8 +19,6 @@ workload_dir=$ABS_PATH/workloads
 # DELEGATION_FS=("parfs-single-pm")
 DELEGATION_FS=("parfs")
 
-# UFS=("madfs")
-
 # DEL_THRDS=(1 2 4 8 12)
 DEL_THRDS=(12)
 
@@ -137,73 +135,5 @@ for file_system in "${DELEGATION_FS[@]}"; do
 
             echo "" >>$result
         done
-    done
-done
-
-load_workload_ufs() {
-    tracefile=$1
-    fs=$2
-    threads=$3
-    ulib_path=$4
-    echo ----------------------- YCSB Load $tracefile ---------------------------
-
-    export trace_file=$workload_dir/$tracefile
-    mkdir -p $output/$fs/$threads
-
-    LD_PRELOAD=$ulib_path $leveldb_dbbench --use_existing_db=0 --benchmarks=ycsb,stats,printdb --db=$database_dir --threads="$threads" --open_files=10 2>&1 | tee $output/$fs/$threads/$tracefile
-
-    ycsb_result=$(grep -oP 'ycsb\s*:\s*\K\d+(\.\d+)?' $output/$fs/$threads/$tracefile)
-    echo -n " $ycsb_result" >>$result
-
-    echo Sleeping for 1 seconds . .
-    sleep 1
-}
-
-run_workload_ufs() {
-    tracefile=$1
-    fs=$2
-    threads=$3
-    ulib_path=$4
-    echo ----------------------- LevelDB YCSB Run $tracefile ---------------------------
-
-    export trace_file=$workload_dir/$tracefile
-    mkdir -p $output/$fs/$threads/
-
-    LD_PRELOAD=$ulib_path $leveldb_dbbench --use_existing_db=1 --benchmarks=ycsb,stats,printdb --db=$database_dir --threads="$threads" --open_files=1000 2>&1 | tee $output/$fs/$threads/$tracefile
-    ycsb_result=$(grep -oP 'ycsb\s*:\s*\K\d+(\.\d+)?' $output/$fs/$threads/$tracefile)
-    echo -n " $ycsb_result" >>$result
-
-    echo Sleeping for 1 seconds . .
-    sleep 1
-}
-
-for fs in "${UFS[@]}"; do
-    ulib_path=$(ufs_lib_path "$fs")
-    for job in "${NUM_JOBS[@]}"; do
-        echo "Running with $job threads"
-        echo -n $fs >>$result
-        echo -n " $job" >>$result
-
-        # mount
-        bash "$TOOLS_PATH"/mount.sh "ext4-dax"
-
-        load_workload_ufs loada_1M $fs $job $ulib_path
-        run_workload_ufs runa_1M_1M $fs $job $ulib_path
-        run_workload_ufs runb_1M_1M $fs $job $ulib_path
-        run_workload_ufs runc_1M_1M $fs $job $ulib_path
-        run_workload_ufs rund_1M_1M $fs $job $ulib_path
-
-        bash "$TOOLS_PATH"/umount.sh "ext4-dax"
-
-        # remount
-        bash "$TOOLS_PATH"/mount.sh "ext4-dax"
-
-        load_workload_ufs loade_1M $fs $job $ulib_path
-        run_workload_ufs rune_1M_1M $fs $job $ulib_path
-        run_workload_ufs runf_1M_1M $fs $job $ulib_path
-
-        bash "$TOOLS_PATH"/umount.sh "ext4-dax"
-
-        echo "" >>$result
     done
 done

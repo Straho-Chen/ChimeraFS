@@ -15,8 +15,6 @@ FS=("nova")
 # DELEGATION_FS=("parfs" "odinfs")
 DELEGATION_FS=("parfs")
 
-# UFS=("madfs")
-
 # in MB
 TOTAL_FILE_SIZE=$((1 * 1024))
 
@@ -139,45 +137,3 @@ for fs in "${DELEGATION_FS[@]}"; do
         done
     done
 done
-
-# do_fio_ufs() {
-#     local fs=$1
-#     local op=$2
-#     local fsize=$3
-#     local bsz=$4
-#     local job=$5
-#     local ulib_path=$6
-
-#     if [[ "$op" == "write" || "$op" == "randwrite" ]]; then
-#         grep_sign="WRITE:"
-#     else
-#         grep_sign="READ:"
-#     fi
-
-#     echo "FIO: $fs $op $fsize $bsz $job" >/dev/kmsg
-
-#     bash "$TOOLS_PATH"/mount.sh "ext4-dax"
-
-#     BW=$(bash LD_PRELOAD=$ulib_path "$TOOLS_PATH"/fio.sh "$fpath" "$bsz" "$fsize" "$job" "$op" | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
-
-#     bash "$TOOLS_PATH"/umount.sh "ext4-dax"
-
-#     table_add_row "$TABLE_NAME" "$fs $op $fsize $bsz $job $BW"
-# }
-
-# for fs in "${UFS[@]}"; do
-#     ulib_path=$(ufs_lib_path "$fs")
-#     for bsz in "${BLK_SIZES[@]}"; do
-#         for job in "${NUM_JOBS[@]}"; do
-#             fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
-#             for ((i = 1; i <= loop; i++)); do
-
-#                 do_fio_ufs "$fs" "write" "$fsize" "$bsz" "$job" "$ulib_path"
-#                 do_fio_ufs "$fs" "read" "$fsize" "$bsz" "$job" "$ulib_path"
-#                 do_fio_ufs "$fs" "randwrite" "$fsize" "$bsz" "$job" "$ulib_path"
-#                 do_fio_ufs "$fs" "randread" "$fsize" "$bsz" "$job" "$ulib_path"
-
-#             done
-#         done
-#     done
-# done
