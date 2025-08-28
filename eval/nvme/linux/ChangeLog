@@ -1,0 +1,16 @@
+Changes:
+  Jul 19, 2018:
+    1. porting link list, rb-tree, radix-tree, bitmap APIs from linux kernel v4.14.43
+
+  Jul 23, 2018:
+    1. porting lockless-link-list from linux kernel v4.14.43
+
+    2. porting rcu-list & hashtable, also add simple test cases.
+
+  Jul 24, 2018:
+    1. use a customize app entry name instead of the default one 'main'
+
+  Dec 19, 2023
+    1. add linux_port.h for better export APIs
+    2. add several mm functions to mm_porting.h
+    3. fix some of per cpu functions 
