@@ -9,8 +9,7 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("ext4-dax" "ext4-raid" "pmfs" "nova" "winefs" "odinfs-single-pm" "parfs-single-pm")
-FS=("parfs-single-pm")
+FS=("ext4-dax" "ext4-raid" "pmfs" "nova" "winefs" "odinfs-single-pm" "parfs-single-pm")
 
 DELEGATION_FS=("odinfs-single-pm" "parfs-single-pm")
 
@@ -20,9 +19,7 @@ WORKLOADS=("write" "randwrite")
 
 TOTAL_FILE_SIZE=$((32 * 1024))
 BLK_SIZES=($((4 * 1024)) $((32 * 1024)))
-# BLK_SIZES=($((32 * 1024)))
 NUM_JOBS=(1 2 4 8 16 28 32)
-# NUM_JOBS=(2)
 
 TABLE_NAME="$ABS_PATH/performance-comparison-table"
 
@@ -84,41 +81,3 @@ for fs in "${FS[@]}"; do
         done
     done
 done
-
-# for job in "${NUM_JOBS[@]}"; do
-#     for bsz in "${BLK_SIZES[@]}"; do
-#         for fs in "${FS[@]}"; do
-#             if [[ "$job" -le 4 ]]; then
-#                 if [[ "$fs" == "idel" ]]; then
-#                     compile_fs "idel-low-thread" "0"
-#                 else
-#                     compile_fs "$fs" "0"
-#                 fi
-
-#                 if [[ "$job" == 4 ]] && [[ "$bsz" == 32768 ]]; then
-#                     compile_fs "$fs" "0"
-#                 fi
-#             else
-#                 compile_fs "$fs" "0"
-#             fi
-#             for workload in "${WORKLOADS[@]}"; do
-#                 fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
-
-#                 if [[ "$job" -le 4 ]]; then
-
-#                     if [[ "$job" == 4 ]] && [[ "$bsz" == 32768 ]] && [[ "$fs" == "idel" ]]; then
-#                         do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
-#                     elif [[ "$fs" == "idel" ]]; then
-#                         do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-#                     else
-#                         do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
-#                     fi
-
-#                 else
-#                     do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
-#                 fi
-
-#             done
-#         done
-#     done
-# done

@@ -9,10 +9,9 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("nova")
+FS=("nova")
 
 DELEGATION_FS=("parfs-single-pm" "parfs")
-# DELEGATION_FS=("parfs")
 
 # in MB
 TOTAL_FILE_SIZE=$((32 * 1024))

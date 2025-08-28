@@ -14,20 +14,12 @@ DELEGATION_FS=("parfs")
 # in MB
 TOTAL_FILE_SIZE=$((2 * 1024))
 
-# NUM_JOBS=(1 2 4 8 16 28 32 48 56)
-# NUM_JOBS=(1 2 4 8 16 28 32)
 NUM_JOBS=(1)
 
 # in B
-# BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
 BLK_SIZES=($((32 * 1024)))
-# BLK_SIZES=($((8 * 1024)))
-# BLK_SIZES=($((16 * 1024)))
-# BLK_SIZES=($((32 * 1024)))
 
-# DEL_THRDS=(1 2 4 8 12)
 DEL_THRDS=(12)
-# DEL_THRDS=(1)
 
 TABLE_NAME="$ABS_PATH/performance-comparison-table"
 

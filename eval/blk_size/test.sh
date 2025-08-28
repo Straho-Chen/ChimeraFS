@@ -9,11 +9,9 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
-FS=("nova")
+FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
-# DELEGATION_FS=("parfs" "odinfs")
-DELEGATION_FS=("parfs")
+DELEGATION_FS=("parfs" "odinfs")
 
 # in MB
 TOTAL_FILE_SIZE=$((1 * 1024))
@@ -94,10 +92,8 @@ for fs in "${FS[@]}"; do
 
                 do_fio "$fs" "write" "$fsize" "$bsz" "$job"
                 do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job"
-                # do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job"
-                # do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job"
-                # do_fio "$fs" "read" "$fsize" "$bsz" "$job"
-                # do_fio "$fs" "randread" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "read" "$fsize" "$bsz" "$job"
+                do_fio "$fs" "randread" "$fsize" "$bsz" "$job"
 
             done
         done
@@ -117,17 +113,13 @@ for fs in "${DELEGATION_FS[@]}"; do
                         compile_fs "low-thread" "0"
                         do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                         do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        # do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        # do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        # compile_fs "$fs" "0"
-                        # do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        # do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        compile_fs "$fs" "0"
+                        do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds" "1"
+                        do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                     else
                         compile_fs "$fs" "0"
                         do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds"
                         do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "overwrite" "$fsize" "$bsz" "$job" "$del_thrds"
-                        do_fio "$fs" "randoverwrite" "$fsize" "$bsz" "$job" "$del_thrds"
                         do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds"
                         do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds"
                     fi

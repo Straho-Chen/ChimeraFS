@@ -9,28 +9,19 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
+FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
-# DELEGATION_FS=("parfs" "odinfs")
-DELEGATION_FS=("parfs")
+DELEGATION_FS=("parfs" "odinfs")
 
 # in MB
 TOTAL_FILE_SIZE=$((32 * 1024))
 
-# NUM_JOBS=(1 2 4 8 16 28 32 48 56)
 NUM_JOBS=(1 2 4 8 16 28 32)
-# NUM_JOBS=(4)
 
 # in B
 BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
-# BLK_SIZES=($((4 * 1024)))
-# BLK_SIZES=($((8 * 1024)))
-# BLK_SIZES=($((16 * 1024)))
-# BLK_SIZES=($((32 * 1024)))
 
-# DEL_THRDS=(1 2 4 8 12)
 DEL_THRDS=(12)
-# DEL_THRDS=(1)
 
 TABLE_NAME="$ABS_PATH/performance-comparison-table"
 
@@ -110,9 +101,7 @@ for job in "${NUM_JOBS[@]}"; do
         for fs in "${DELEGATION_FS[@]}"; do
 
             if [[ "$job" -le 4 ]] && [[ "$bsz" -le 16384 ]]; then
-                if [[ "$fs" == "idel" ]]; then
-                    compile_fs "idel-low-thread" "0"
-                elif [[ "$fs" == "parfs" ]]; then
+                if [[ "$fs" == "parfs" ]]; then
                     compile_fs "low-thread" "0"
                 else
                     compile_fs "$fs" "0"
@@ -140,9 +129,6 @@ for job in "${NUM_JOBS[@]}"; do
 done
 
 for fs in "${DELEGATION_FS[@]}"; do
-    # if [[ "$fs" == "idel" ]]; then
-    #     continue
-    # fi
     compile_fs "$fs" "0"
     for del_thrds in "${DEL_THRDS[@]}"; do
         for bsz in "${BLK_SIZES[@]}"; do
@@ -158,28 +144,3 @@ for fs in "${DELEGATION_FS[@]}"; do
         done
     done
 done
-
-do_fio_ufs() {
-    local fs=$1
-    local op=$2
-    local fsize=$3
-    local bsz=$4
-    local job=$5
-    local ulib_path=$6
-
-    if [[ "$op" == "write" || "$op" == "randwrite" ]]; then
-        grep_sign="WRITE:"
-    else
-        grep_sign="READ:"
-    fi
-
-    echo "FIO: $fs $op $fsize $bsz $job" >/dev/kmsg
-
-    bash "$TOOLS_PATH"/mount.sh "ext4-dax"
-
-    BW=$(bash LD_PRELOAD=$ulib_path "$TOOLS_PATH"/fio.sh "$fpath" "$bsz" "$fsize" "$job" "$op" | grep "$grep_sign" | awk '{print $2}' | sed 's/bw=//g' | "$TOOLS_PATH"/converter/to_MiB_s)
-
-    bash "$TOOLS_PATH"/umount.sh "ext4-dax"
-
-    table_add_row "$TABLE_NAME" "$fs $op $fsize $bsz $job $BW"
-}

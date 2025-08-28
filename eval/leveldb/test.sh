@@ -12,19 +12,13 @@ leveldb_dbbench=$ABS_PATH/../benchmark/bin/leveldb/dbbench
 database_dir=$pmem_dir/leveldbtest
 workload_dir=$ABS_PATH/workloads
 
-# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
-# FS=("nova")
+FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
-# DELEGATION_FS=("odinfs" "parfs")
-# DELEGATION_FS=("parfs-single-pm")
-DELEGATION_FS=("parfs")
+DELEGATION_FS=("odinfs" "parfs" "parfs-single-pm")
 
-# DEL_THRDS=(1 2 4 8 12)
 DEL_THRDS=(12)
 
-# NUM_JOBS=(1)
 NUM_JOBS=(1 2 4 8 16 28 32)
-# NUM_JOBS=(32)
 
 rm -rf $output
 
