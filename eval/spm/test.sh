@@ -17,7 +17,7 @@ del_thrds=(12)
 
 WORKLOADS=("write" "randwrite")
 
-TOTAL_FILE_SIZE=$((32 * 1024))
+TOTAL_FILE_SIZE=$((4 * 1024))
 BLK_SIZES=($((4 * 1024)) $((32 * 1024)))
 NUM_JOBS=(1 2 4 8 16 28 32)
 
@@ -69,8 +69,12 @@ do_fio() {
 }
 
 for fs in "${FS[@]}"; do
-    compile_fs "$fs" "0"
     for job in "${NUM_JOBS[@]}"; do
+        if [[ "$job" -le 4 ]] && [[ "$fs" == "parfs-single-pm" ]]; then
+            compile_fs "low-thread" "0"
+        else
+            compile_fs "$fs" "0"
+        fi
         for bsz in "${BLK_SIZES[@]}"; do
             for workload in "${WORKLOADS[@]}"; do
                 fsize=($(("$TOTAL_FILE_SIZE" / "$job")))

@@ -13,10 +13,7 @@ TOOLS_PATH=$ABS_PATH/../tools
 FSCRIPT_PRE_FIX=$TOOLS_PATH/fbscripts
 FB_PATH=$ABS_PATH/../benchmark/bin/filebench/bin
 
-# winefs may cause a kernel crash
-FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
-
-DELEGATION_FS=("odinfs" "parfs")
+FS=("winefs")
 
 FILE_BENCHES=("fileserver.f" "varmail.f" "webserver.f" "webproxy.f")
 
@@ -25,8 +22,6 @@ THREADS=(1 2 4 8 16 28 32)
 DEL_THRDS=(12)
 
 TABLE_NAME="$ABS_PATH/performance-comparison-table"
-
-table_create "$TABLE_NAME" "fs fbench threads iops create delete close read write IO"
 
 loop=1
 if [ "$1" ]; then
@@ -115,24 +110,6 @@ for fs in "${FS[@]}"; do
 
                 do_fb "$fs" "$fbench" "$thrd"
 
-            done
-        done
-    done
-done
-
-# for delegation fs
-
-for fs in "${DELEGATION_FS[@]}"; do
-    compile_fs "$fs" "0"
-    for del_thrds in "${DEL_THRDS[@]}"; do
-        for fbench in "${FILE_BENCHES[@]}"; do
-            mkdir -p "$ABS_PATH"/DATA/"$fbench"
-            for thrd in "${THREADS[@]}"; do
-                for ((i = 1; i <= loop; i++)); do
-
-                    do_fb "$fs" "$fbench" "$thrd" "$del_thrds"
-
-                done
             done
         done
     done

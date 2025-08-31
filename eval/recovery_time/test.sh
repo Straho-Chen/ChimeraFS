@@ -32,6 +32,11 @@ table_create "$TABLE_NAME" "fs workload recovery_time(ns)"
 
 fpath="/mnt/pmem0/"
 
+loop=3
+if [ "$1" ]; then
+    loop=$1
+fi
+
 do_fio() {
     local fs=$1
     local op=$2
@@ -97,53 +102,56 @@ do_fb() {
     fs=$fs_raw
 }
 
-for fs in "${DELEGATION_FS[@]}"; do
-    compile_fs "$fs" "0"
-    for bsz in "${BLK_SIZES[@]}"; do
-        for job in "${NUM_JOBS[@]}"; do
-            for workload in "${FIO_WORKLOADS[@]}"; do
-                fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
+for ((i = 1; i <= loop; i++)); do
+    for fs in "${DELEGATION_FS[@]}"; do
+        compile_fs "$fs" "0"
+        for bsz in "${BLK_SIZES[@]}"; do
+            for job in "${NUM_JOBS[@]}"; do
+                for workload in "${FIO_WORKLOADS[@]}"; do
+                    fsize=($(("$TOTAL_FILE_SIZE" / "$job")))
 
-                do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
+                    do_fio "$fs" "$workload" "$fsize" "$bsz" "$job" "$del_thrds"
 
-                dmesg -C
+                    dmesg -C
 
-                $ABS_PATH/remount.sh
+                    $ABS_PATH/remount.sh
 
-                dmesg -c >"$ABS_PATH"/recovery.log
-                # time=$( (time bash "$ABS_PATH"/remount.sh) 2>&1 | grep real | awk '{print $2}' )
-                time=$(dmesg_attr_time "$ABS_PATH"/recovery.log "recovery_time")
+                    dmesg -c >"$ABS_PATH"/recovery.log
+                    # time=$( (time bash "$ABS_PATH"/remount.sh) 2>&1 | grep real | awk '{print $2}' )
+                    time=$(dmesg_attr_time "$ABS_PATH"/recovery.log "recovery_time")
 
-                table_add_row "$TABLE_NAME" "$fs fio $time"
+                    table_add_row "$TABLE_NAME" "$fs fio $time"
 
-                bash "$TOOLS_PATH"/umount.sh "$fs"
+                    bash "$TOOLS_PATH"/umount.sh "$fs"
 
+                done
             done
         done
     done
 done
 
-for fs in "${DELEGATION_FS[@]}"; do
-    compile_fs "$fs" "0"
-    for bsz in "${BLK_SIZES[@]}"; do
-        for job in "${NUM_JOBS[@]}"; do
-            for workload in "${FB_WORKLOADS[@]}"; do
-                mkdir -p "$ABS_PATH"/DATA/"$workload"
+for ((i = 1; i <= loop; i++)); do
+    for fs in "${DELEGATION_FS[@]}"; do
+        compile_fs "$fs" "0"
+        for bsz in "${BLK_SIZES[@]}"; do
+            for job in "${NUM_JOBS[@]}"; do
+                for workload in "${FB_WORKLOADS[@]}"; do
+                    mkdir -p "$ABS_PATH"/DATA/"$workload"
 
-                do_fb "$fs" "$workload" "$job" "$del_thrds"
+                    do_fb "$fs" "$workload" "$job" "$del_thrds"
 
-                dmesg -C
+                    dmesg -C
 
-                $ABS_PATH/remount.sh
+                    $ABS_PATH/remount.sh
 
-                dmesg -c >"$ABS_PATH"/recovery.log
-                # time=$( (time bash "$ABS_PATH"/remount.sh) 2>&1 | grep real | awk '{print $2}' )
-                time=$(dmesg_attr_time "$ABS_PATH"/recovery.log "recovery_time")
+                    dmesg -c >"$ABS_PATH"/recovery.log
+                    # time=$( (time bash "$ABS_PATH"/remount.sh) 2>&1 | grep real | awk '{print $2}' )
+                    time=$(dmesg_attr_time "$ABS_PATH"/recovery.log "recovery_time")
 
-                table_add_row "$TABLE_NAME" "$fs filebench $time"
+                    table_add_row "$TABLE_NAME" "$fs filebench $time"
 
-                bash "$TOOLS_PATH"/umount.sh "$fs"
-
+                    bash "$TOOLS_PATH"/umount.sh "$fs"
+                done
             done
         done
     done

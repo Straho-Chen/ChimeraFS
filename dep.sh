@@ -6,6 +6,3 @@ sudo apt install libdaxctl-dev libndctl-dev libipmctl-dev libudev-dev libkmod-de
 
 # for rocksdb
 sudo apt install libgflags-dev libsnappy-dev zlib1g-dev libbz2-dev liblz4-dev libzstd-dev
-
-# for Madfs
-sudo apt install gcc-10 g++-10

@@ -1,27 +1,18 @@
 #!/usr/bin/bash
 
-./moti/test.sh
+run_test() {
+    local dir=$1
+    cd "$dir" && ./test.sh && cd -
+}
 
-./dele_size/test.sh
-
-./hash/test.sh
-
-./blk_size/test.sh
-
-./fio/test.sh
-
-./filebench/test.sh
-
-./leveldb/test.sh
-
-./breakdown/test.sh
-
-./opt_append/test.sh
-
-./io_dispatch/test.sh
-
-./spm/test.sh
-
-./recovery_time/test.sh
-
-./nvme/test.sh
+run_test "moti"
+run_test "dele_size" 
+run_test "blk_size"
+run_test "fio"
+run_test "filebench"
+run_test "leveldb"
+run_test "breakdown"
+run_test "opt_append"
+run_test "io_dispatch"
+run_test "spm"
+run_test "recovery_time"

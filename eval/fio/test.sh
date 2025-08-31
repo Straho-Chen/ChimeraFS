@@ -14,7 +14,7 @@ FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 DELEGATION_FS=("parfs" "odinfs")
 
 # in MB
-TOTAL_FILE_SIZE=$((32 * 1024))
+TOTAL_FILE_SIZE=$((4 * 1024))
 
 NUM_JOBS=(1 2 4 8 16 28 32)
 

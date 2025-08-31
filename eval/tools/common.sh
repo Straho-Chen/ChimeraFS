@@ -52,7 +52,7 @@ function dmesg_attr_time() {
     local output="$1"
     local stat="$2"
 
-    cat "$output" | grep -w "$stat" | awk -F: '{print $3}' | sed 's/ //g'
+    cat "$output" | grep -w "$stat" | awk '{print $4}' | sed 's/ //g'
 }
 
 function compile_fs() {

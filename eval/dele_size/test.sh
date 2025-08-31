@@ -14,7 +14,7 @@ FS=("append_csum_whole_block" "append_csum_partial_block" "append_no_csum")
 DELEGATION_FS=("append_csum_whole_block" "append_csum_partial_block" "append_no_csum" "parfs")
 
 # in MB
-TOTAL_FILE_SIZE=$((32 * 1024))
+TOTAL_FILE_SIZE=$((4 * 1024))
 
 NUM_JOBS=(32)
 

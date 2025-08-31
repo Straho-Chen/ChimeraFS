@@ -9,7 +9,7 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-FS=("pmfs" "nova" "cknova" "idel" "odinfs" "optfs")
+FS=("pmfs" "nova" "cknova" "idel" "odinfs" "optfs" "parfs")
 
 DELEGATION_FS=("idel" "odinfs" "parfs" "optfs")
 
