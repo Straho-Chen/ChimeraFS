@@ -9,9 +9,10 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
+# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
-DELEGATION_FS=("parfs" "odinfs")
+# DELEGATION_FS=("parfs" "odinfs")
+DELEGATION_FS=("parfs")
 
 # in MB
 TOTAL_FILE_SIZE=$((1 * 1024))
@@ -19,7 +20,8 @@ TOTAL_FILE_SIZE=$((1 * 1024))
 NUM_JOBS=(1)
 
 # in B
-BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
+# BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
+BLK_SIZES=($((32 * 1024)))
 
 DEL_THRDS=(12)
 
@@ -110,10 +112,11 @@ for fs in "${DELEGATION_FS[@]}"; do
                 for ((i = 1; i <= loop; i++)); do
 
                     if [[ "$fs" == "parfs" ]]; then
-                        compile_fs "low-thread" "0"
+                        compile_fs "$fs" "0"
+                        # compile_fs "low-thread" "0"
                         do_fio "$fs" "write" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                         do_fio "$fs" "randwrite" "$fsize" "$bsz" "$job" "$del_thrds" "1"
-                        compile_fs "$fs" "0"
+                        # compile_fs "$fs" "0"
                         do_fio "$fs" "read" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                         do_fio "$fs" "randread" "$fsize" "$bsz" "$job" "$del_thrds" "1"
                     else
