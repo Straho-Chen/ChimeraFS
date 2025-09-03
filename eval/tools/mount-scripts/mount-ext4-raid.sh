@@ -30,6 +30,8 @@ done
 strip_config="0 $strip_length striped $stripes $chunk_size $devices"
 echo "$strip_config" | sudo dmsetup create striped-pmem
 
+sleep 1
+
 sudo mkfs.ext4 -F /dev/mapper/striped-pmem
 sudo mount -o dax /dev/mapper/striped-pmem /mnt/pmem0/
 sudo chown $USER /mnt/pmem0/

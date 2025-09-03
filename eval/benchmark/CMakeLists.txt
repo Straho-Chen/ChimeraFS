@@ -48,6 +48,7 @@ add_custom_target(
 add_custom_target(
     filebench ALL
     WORKING_DIRECTORY ${cur_dir}/filebench-1.5-alpha3
+    COMMAND autoreconf -f -i
     COMMAND ./configure --prefix=${bin_dir}/filebench
     COMMAND make -j$(nproc)
     COMMAND make install

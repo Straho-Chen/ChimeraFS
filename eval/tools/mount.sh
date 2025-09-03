@@ -9,6 +9,8 @@ ABS_PATH=$(where_is_script "$0")
 
 # mount script path
 
+mkdir -p /mnt/pmem0
+
 MOUNT_SCRIPT_PATH=$ABS_PATH/mount-scripts
 
 # free memory at first

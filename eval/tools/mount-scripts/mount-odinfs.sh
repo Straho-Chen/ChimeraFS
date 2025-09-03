@@ -28,5 +28,7 @@ cd $pmem_probe_dir && python3 gen_config.py 2
 
 sudo parradm create /dev/odinfs_pmem_ar0 $pmem_probe_file
 
+sleep 1
+
 sudo mount -t odinfs -o init,dele_thrds=$del_thrds /dev/odinfs_pmem_ar0 /mnt/pmem0/
 sudo chown $USER /mnt/pmem0/

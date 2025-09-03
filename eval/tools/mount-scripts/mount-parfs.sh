@@ -29,6 +29,8 @@ cd $pmem_probe_dir && python3 gen_config.py 2
 
 sudo parradm create /dev/parfs_pmem_ar0 $pmem_probe_file
 
+sleep 1
+
 if [[ -z "$write_dele_size" ]]; then
     sudo mount -t parfs -o init,dele_thrds=$del_thrds,data_cow /dev/parfs_pmem_ar0 /mnt/pmem0/
 else

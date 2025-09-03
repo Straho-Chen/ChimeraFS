@@ -3,5 +3,7 @@
 mount_script_dir=$(dirname "$(readlink -f "$BASH_SOURCE[0]")")
 $mount_script_dir/check-pm-fsdax.sh 0
 
+sleep 1
+
 sudo mount -t winefs -o init,strict /dev/pmem0 /mnt/pmem0/
 sudo chown $USER /mnt/pmem0/
