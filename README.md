@@ -1,6 +1,14 @@
 # ChimeraFS Artifacts Evaluation
 
-This repository contains the artifacts for the paper "Fast and Parallelized Crash Consistency with Opportunistic Order Elimination" (ChimeraFS) accepted by EuroSys'26.
+This repository contains the artifacts for the paper **"Fast and Parallelized Crash Consistency with Opportunistic Order Elimination" (ChimeraFS)**, which has been accepted by **EuroSys'26**. 
+
+We are proud to announce that this work has been awarded the **Available**, **Functional**, and **Reproduced** badges during the Artifact Evaluation (AE) process of EuroSys'26. These badges signify that the artifacts are publicly available, functional as described, and reproducible by independent reviewers.
+
+- **Available**: The artifacts are publicly accessible and well-documented.
+- **Functional**: The artifacts work as intended and produce the expected results.
+- **Reproduced**: Independent reviewers successfully reproduced the results presented in the paper.
+
+For more details on the evaluation process and how to reproduce the results, please refer to the sections below.
 
 - [ChimeraFS Artifacts Evaluation](#chimerafs-artifacts-evaluation)
   - [1. Artifact Overview](#1-artifact-overview)
@@ -57,7 +65,13 @@ If you want to use your own kernel, please make sure that fs dir contains the li
 
 - **Hardware**: At least one PM equipped (>64\,GiB), which can be either real PM or emulated PM (via `memmap` or QEMU `-device nvdimm` options). PM should be configured in `fsdax` mode.
 
-- **Software**: We include our benchmarks into the repo and provide a `dep.sh` script to install the dependencies. The user should run this script to install the dependencies:
+- **Software**: We include our benchmarks into the repo and provide a `dep.sh` script to install the dependencies. The user should run this script to install the dependencies. Besides the software listed in `dep.sh`, the user should also install `conda` to run the plotting scripts. We recommend using `miniconda` to install `conda`. You can follow the instructions at https://www.anaconda.com/docs/getting-started/miniconda/install#linux-terminal-installer to install `miniconda`. After installing `conda`, you can create a conda environment by the following commands:
+
+```bash
+conda create --name <env> --file ./requirements.txt
+```
+
+The conda environment name should be the same as `CONDA_ENV` in `eval/blk_size/plot.sh`.
 
 After installing the dependencies, enter the `eval/benchmark` directory and run `make` to build the benchmarks.
 

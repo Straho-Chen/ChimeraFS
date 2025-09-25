@@ -9,10 +9,10 @@ sudo -v
 ABS_PATH=$(where_is_script "$0")
 TOOLS_PATH=$ABS_PATH/../tools
 
-# FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
+FS=("ext4-dax" "ext4-raid" "nova" "pmfs" "winefs")
 
-# DELEGATION_FS=("parfs" "odinfs")
-DELEGATION_FS=("parfs")
+DELEGATION_FS=("parfs" "odinfs")
+# DELEGATION_FS=("parfs")
 
 # in MB
 TOTAL_FILE_SIZE=$((1 * 1024))
@@ -20,8 +20,8 @@ TOTAL_FILE_SIZE=$((1 * 1024))
 NUM_JOBS=(1)
 
 # in B
-# BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
-BLK_SIZES=($((32 * 1024)))
+BLK_SIZES=($((4 * 1024)) $((8 * 1024)) $((16 * 1024)) $((32 * 1024)))
+# BLK_SIZES=($((32 * 1024)))
 
 DEL_THRDS=(12)
 
